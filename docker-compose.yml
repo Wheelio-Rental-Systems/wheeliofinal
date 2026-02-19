@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  # Database Service
+  db:
+    image: postgres:15-alpine
+    container_name: wheelio-db
+    environment:
+      POSTGRES_DB: wheelio_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - wheelio-network
+    restart: unless-stopped
+
+  # Backend Service
+  backend:
+    build:
+      context: ./wheelio-backend
+      dockerfile: Dockerfile
+    container_name: wheelio-backend
+    ports:
+      - "8072:8072"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/wheelio_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: admin123
+      SPRING_GPA_HIBERNATE_DDL_AUTO: update
+      JWT_SECRET: wheelio_super_secret_key_for_jwt_token_generation_2024_very_long_key
+      JWT_EXPIRATION: 86400000
+    depends_on:
+      - db
+    networks:
+      - wheelio-network
+    restart: on-failure
+
+  # Frontend Service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: wheelio-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    networks:
+      - wheelio-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+
+networks:
+  wheelio-network:
+    driver: bridge

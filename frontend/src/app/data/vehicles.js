@@ -1,0 +1,756 @@
+export const vehicles = [
+  {
+    id: 1,
+    name: 'Maruti Swift',
+    brand: 'Maruti Suzuki',
+    type: 'Hatchback',
+    image: '/images/swift.jpeg',
+    price: 1200,
+    rating: 4.5,
+    reviews: 328,
+    seats: 5,
+    fuelType: 'Petrol',
+    transmission: 'Manual',
+    status: 'available',
+    location: 'Mumbai',
+    details: {
+      mileage: '22.4 kmpl',
+      engine: '1197 cc',
+      power: '89 bhp',
+      topSpeed: '165 km/h',
+      bootSpace: '268 L',
+      fuelTank: '37 L'
+    },
+    features: ['Dual Airbags', 'ABS with EBD', 'Touchscreen Infotainment', 'Steering Mounted Controls', 'Rear Parking Sensors'],
+    description: "The Maruti Swift is India's favourite hatchback, known for its sporty design and peppy performance. Perfect for city driving with excellent fuel efficiency.",
+    images: [
+
+      '/images/swift.jpeg',
+      '/images/swift1.avif',
+      '/images/swift2.jpg',
+      '/images/swift3.avif'
+
+    ]
+  },
+  {
+    id: 2,
+    name: 'Hyundai Creta',
+    brand: 'Hyundai',
+    type: 'SUV',
+    image: '/images/creta.jpg',
+    price: 2500,
+    rating: 4.7,
+    reviews: 412,
+    seats: 5,
+    fuelType: 'Diesel',
+    transmission: 'Automatic',
+    status: 'available',
+    location: 'Bangalore',
+    details: {
+      mileage: '18.5 kmpl',
+      engine: '1493 cc',
+      power: '113 bhp',
+      topSpeed: '170 km/h',
+      bootSpace: '433 L',
+      fuelTank: '50 L'
+    },
+    features: ['Panoramic Sunroof', 'Ventilated Seats', 'Bose Sound System', '6 Airbags', 'Wireless Charging'],
+    description: "The Ultimate SUV. The Hyundai Creta offers a premium driving experience with feature-loaded interiors and a powerful diesel engine.",
+    images: [
+
+      '/images/creta.jpg',
+      '/images/creta1.avif',
+      '/images/creta2.jpeg',
+      '/images/creta3.jpg',
+
+    ]
+  },
+  {
+    id: 3,
+    name: 'Mahindra Thar 4x4',
+    brand: 'Mahindra',
+    type: 'SUV',
+    image: '/images/thar.jpeg',
+    price: 3500,
+    rating: 4.8,
+    reviews: 560,
+    seats: 4,
+    fuelType: 'Diesel',
+    transmission: 'Manual',
+    status: 'rented',
+    location: 'Coimbatore',
+    details: {
+      mileage: '15.2 kmpl',
+      engine: '2184 cc',
+      power: '130 bhp',
+      topSpeed: '155 km/h',
+      bootSpace: 'N/A',
+      fuelTank: '57 L'
+    },
+    features: ['4x4 Drivetrain', 'Convertible Top', 'Touchscreen Display', 'All-Terrain Tyres', 'Roll Caption'],
+    description: "Explore the impossible. The Mahindra Thar is a legendary off-roader built to tackle any terrain with ease and style.",
+    images: [
+      '/images/thar.jpeg',
+      '/images/thar1.jpg',
+      '/images/thar 2.jpg',
+      '/images/thar3.jpeg'
+    ]
+  },
+  {
+    id: 4,
+    name: 'Tata Nexon EV',
+    brand: 'Tata Motors',
+    type: 'SUV',
+    image: '/images/tata nexon ev.jpg',
+    price: 2800,
+    rating: 4.6,
+    reviews: 215,
+    seats: 5,
+    fuelType: 'Electric',
+    transmission: 'Automatic',
+    status: 'available',
+    location: 'Pune',
+    details: {
+      mileage: '453 km range',
+      engine: 'Electric Motor',
+      power: '141 bhp',
+      topSpeed: '140 km/h',
+      bootSpace: '350 L',
+      fuelTank: '40.5 kWh'
+    },
+    features: ['Regenerative Braking', 'Sunroof', 'Connected Car Tech', 'Fast Charging', 'Air Purifier'],
+    description: "Go Green with the Tata Nexon EV. Experience the thrill of instant torque and a silent, emission-free drive.",
+    images: [
+      '/images/tata nexon ev.jpg',
+      '/images/nexon1.webp',
+      '/images/nexon2.jpeg',
+      '/images/nexon3.avif'
+    ]
+  },
+  {
+    id: 5,
+    name: 'Toyota Innova Crysta',
+    brand: 'Toyota',
+    type: 'MPV',
+    image: '/images/toyata crysta.jpg',
+    price: 3800,
+    rating: 4.9,
+    reviews: 890,
+    seats: 7,
+    fuelType: 'Diesel',
+    transmission: 'Automatic',
+    status: 'available',
+    location: 'Chennai',
+    details: {
+      mileage: '12.0 kmpl',
+      engine: '2393 cc',
+      power: '148 bhp',
+      topSpeed: '179 km/h',
+      bootSpace: '300 L',
+      fuelTank: '55 L'
+    },
+    features: ['Captain Seats', 'Ambient Lighting', '7 Airbags', 'Cruise Control', 'Foldable Tables'],
+    description: "Unmatched Comfort. The Innova Crysta is the perfect choice for long family trips, offering ample space and a plush ride.",
+    images: [
+      '/images/toyata crysta.jpg',
+      '/images/crysta2.avif',
+      '/images/crysta3.avif',
+      '/images/crysta3.jpeg'
+    ]
+  },
+  {
+    id: 6,
+    name: 'Honda City 5th Gen',
+    brand: 'Honda',
+    type: 'Sedan',
+    image: '/images/honda city 5th gen.jpg',
+    price: 2200,
+    rating: 4.6,
+    reviews: 180,
+    seats: 5,
+    fuelType: 'Petrol',
+    transmission: 'CVT',
+    status: 'available',
+    location: 'Delhi',
+    details: {
+      mileage: '18.4 kmpl',
+      engine: '1498 cc',
+      power: '119 bhp',
+      topSpeed: '180 km/h',
+      bootSpace: '506 L',
+      fuelTank: '40 L'
+    },
+    features: ['Lane Watch Camera', 'Sunroof', 'Alexa Support', '8-Speaker Audio', 'Leather Upholstery'],
+    description: "A class apart. The Honda City offers sophistication, comfort, and advanced technology for the discerning traveller.",
+    images: [
+      '/images/honda city 5th gen.jpg',
+      '/images/city2.jpg',
+      '/images/city3.avif',
+      '/images/city4.avif',
+    ]
+  },
+  {
+    id: 7,
+    name: 'Mahindra XUV700',
+    brand: 'Mahindra',
+    type: 'SUV',
+    image: '/images/Mahindra XUV700.jpeg',
+    price: 3200,
+    rating: 4.8,
+    reviews: 350,
+    seats: 7,
+    fuelType: 'Diesel',
+    transmission: 'Automatic',
+    status: 'available',
+    location: 'Hyderabad',
+    details: {
+      mileage: '16.5 kmpl',
+      engine: '2198 cc',
+      power: '182 bhp',
+      topSpeed: '200 km/h',
+      bootSpace: '220 L',
+      fuelTank: '60 L'
+    },
+    features: ['ADAS Level 2', 'Dual HD Screens', 'Skyroof', 'Sony 3D Audio', 'Smart Door Handles'],
+    description: "Experience the rush. The XUV700 is a tech-loaded beast that redefines the SUV segment in India.",
+    images: [
+      '/images/Mahindra XUV700.jpeg',
+      '/images/xuv2.jpeg',
+      '/images/xuv2.avif',
+      '/images/xuv3.avif',
+    ]
+  },
+  {
+    id: 8,
+    name: 'Kia Seltos',
+    brand: 'Kia',
+    type: 'SUV',
+    image: '/images/Kia Seltos.jpeg',
+    price: 2400,
+    rating: 4.5,
+    reviews: 290,
+    seats: 5,
+    fuelType: 'Petrol',
+    transmission: 'DCT',
+    status: 'available',
+    location: 'Kolkata',
+    details: {
+      mileage: '16.8 kmpl',
+      engine: '1353 cc',
+      power: '138 bhp',
+      topSpeed: '175 km/h',
+      bootSpace: '433 L',
+      fuelTank: '50 L'
+    },
+    features: ['Heads-Up Display', '360 Camera', 'Air Purifier', 'Mood Lighting', 'Ventilated Seats'],
+    description: "Badass by design. The Kia Seltos combines aggressive styling with premium features for a standout drive.",
+    images: [
+      '/images/Kia Seltos.jpeg',
+      '/images/kia2.avif',
+      '/images/kia3.avif',
+      '/images/kia4.avif'
+    ]
+  },
+  {
+    id: 9,
+    name: 'Tata Safari',
+    brand: 'Tata Motors',
+    type: 'SUV',
+    image: '/images/Tata Safari.webp',
+    price: 3300,
+    rating: 4.7,
+    reviews: 200,
+    seats: 7,
+    fuelType: 'Diesel',
+    transmission: 'Automatic',
+    status: 'maintenance',
+    location: 'Mumbai',
+    details: {
+      mileage: '16.1 kmpl',
+      engine: '1956 cc',
+      power: '168 bhp',
+      topSpeed: '180 km/h',
+      bootSpace: '73 L',
+      fuelTank: '50 L'
+    },
+    features: ['Panoramic Sunroof', 'Captain Seats', 'JBL Audio', 'Terrain Response', 'Connected Tech'],
+    description: "Reclaim your life. The iconic Tata Safari returns with modern luxury and commanding road presence.",
+    images: [
+      '/images/Tata Safari.webp',
+      '/images/safari2.avif',
+      '/images/safari3.jpg',
+      '/images/safari4.webp',
+
+    ]
+  },
+  {
+    id: 10,
+    name: 'Hyundai Verna',
+    brand: 'Hyundai',
+    type: 'Sedan',
+    image: '/images/Hyundai Verna.jpeg',
+    price: 2100,
+    rating: 4.4,
+    reviews: 150,
+    seats: 5,
+    fuelType: 'Petrol',
+    transmission: 'Turbo DCT',
+    status: 'available',
+    location: 'Pune',
+    details: {
+      mileage: '19.2 kmpl',
+      engine: '1482 cc',
+      power: '158 bhp',
+      topSpeed: '210 km/h',
+      bootSpace: '528 L',
+      fuelTank: '45 L'
+    },
+    features: ['ADAS', 'Dual 10.25" Screens', 'Heated Seats', 'Bose Audio', 'Parametric Design'],
+    description: "Futuristic Ferocity. The all-new Verna brings diverse design and thrilling turbo performance.",
+    images: [
+      '/images/Hyundai Verna.jpeg',
+      '/images/verna2.webp',
+      '/images/verna3.jpg',
+      '/images/verna4.jpeg',
+    ]
+  },
+  {
+    id: 11,
+    name: 'Maruti Brezza',
+    brand: 'Maruti Suzuki',
+    type: 'SUV',
+    image: '/images/Maruti Brezza.avif',
+    price: 1800,
+    rating: 4.3,
+    reviews: 400,
+    seats: 5,
+    fuelType: 'Petrol',
+    transmission: 'Automatic',
+    status: 'available',
+    location: 'Jaipur',
+    details: {
+      mileage: '19.8 kmpl',
+      engine: '1462 cc',
+      power: '102 bhp',
+      topSpeed: '160 km/h',
+      bootSpace: '328 L',
+      fuelTank: '48 L'
+    },
+    features: ['Sunroof', '360 Camera', 'Clean Tech', 'Heads Up Display', 'Smart Hybrid'],
+    description: "The City-Bred SUV. Compact, efficient, and packed with tech for the urban jungle.",
+    images: [
+      '/images/Maruti Brezza.avif',
+      '/images/bre2.avif',
+      '/images/bre3.jpeg',
+      '/images/bre4.avif',
+    ]
+  },
+  {
+    id: 12,
+    name: 'Fortuner Legender',
+    brand: 'Toyota',
+    type: 'SUV',
+    image: '/images/for2.jpeg',
+    price: 6500,
+    rating: 4.9,
+    reviews: 600,
+    seats: 7,
+    fuelType: 'Diesel',
+    transmission: 'Automatic',
+    status: 'available',
+    location: 'Chandigarh',
+    details: {
+      mileage: '10.0 kmpl',
+      engine: '2755 cc',
+      power: '201 bhp',
+      topSpeed: '190 km/h',
+      bootSpace: '296 L',
+      fuelTank: '80 L'
+    },
+    features: ['4x4 Sigma 4', 'Kick Sensor Boot', 'Dual Zone AC', 'Wireless Charger', '11 Speakers'],
+    description: "Power to Lead. The Fortuner Legender commands respect with its unmatched durability and presence.",
+    images: [
+      '/images/for2.jpeg',
+      '/images/for3.avif',
+      '/images/Fortuner Legender.jpeg',
+      '/images/for4.webp'
+    ]
+  },
+
+  {
+    id: 13,
+    name: 'Royal Enfield Himalayan 450',
+    brand: 'Royal Enfield',
+    type: 'Bike',
+    image: '/images/himalayan 450.jpg',
+    price: 1500,
+    rating: 4.8,
+    reviews: 420,
+    seats: 2,
+    fuelType: 'Petrol',
+    transmission: 'Manual',
+    status: 'available',
+    location: 'Manali',
+    details: {
+      mileage: '30 kmpl',
+      engine: '452 cc',
+      power: '40 bhp',
+      topSpeed: '145 km/h',
+      bootSpace: 'N/A',
+      fuelTank: '17 L'
+    },
+    features: ['Tripper Navigation', 'Switchable ABS', 'Liquid Cooled', 'Ride-by-Wire', 'USD Forks'],
+    description: "Built for all roads, built for no roads. The Himalayan 450 is the ultimate adventure tourer.",
+    images: [
+      '/images/himalayan 450.jpg',
+      '/images/re2.avif',
+      '/images/re3.webp',
+      '/images/re4.jpg'
+    ]
+  },
+  {
+    id: 14,
+    name: 'Royal Enfield Classic 350',
+    brand: 'Royal Enfield',
+    type: 'Bike',
+    image: '/images/cl1.avif',
+    price: 1100,
+    rating: 4.7,
+    reviews: 950,
+    seats: 2,
+    fuelType: 'Petrol',
+    transmission: 'Manual',
+    status: 'available',
+    location: 'Chennai',
+    details: {
+      mileage: '35 kmpl',
+      engine: '349 cc',
+      power: '20.2 bhp',
+      topSpeed: '115 km/h',
+      bootSpace: 'N/A',
+      fuelTank: '13 L'
+    },
+    features: ['Dual Channel ABS', 'Digital-Analog Cluster', 'USB Port', 'Timeless Design', 'Thump Exhaust'],
+    description: "The Reborn Classic. Experience the pure motorcycling spirit with the refined J-series engine.",
+    images: [
+      '/images/cl1.avif',
+      '/images/cl2.avif',
+      '/images/cl3.jpeg',
+      '/images/cl4.jpg',
+
+    ]
+  },
+  {
+    id: 15,
+    name: 'KTM Duke 390',
+    brand: 'KTM',
+    type: 'Bike',
+    image: '/images/duke1.avif',
+    price: 1800,
+    rating: 4.6,
+    reviews: 310,
+    seats: 2,
+    fuelType: 'Petrol',
+    transmission: 'Manual',
+    status: 'available',
+    location: 'Bangalore',
+    details: {
+      mileage: '28 kmpl',
+      engine: '373 cc',
+      power: '43 bhp',
+      topSpeed: '167 km/h',
+      bootSpace: 'N/A',
+      fuelTank: '13.5 L'
+    },
+    features: ['Quickshifter+', 'TFT Display', 'Cornering ABS', 'Launch Control', 'Supermoto Mode'],
+    description: "The Corner Rocket. Pure adrenaline on two wheels, perfect for track days and canyon carving.",
+    images: [
+      '/images/duke1.avif',
+      '/images/ktm duke 390.jpeg',
+      '/images/duke2.jpg',
+      '/images/duke4.avif'
+    ]
+  },
+  {
+    id: 16,
+    name: 'Bajaj Dominar 400',
+    brand: 'Bajaj',
+    type: 'Bike',
+    image: '/images/dom.jpg',
+    price: 1400,
+    rating: 4.4,
+    reviews: 250,
+    seats: 2,
+    fuelType: 'Petrol',
+    transmission: 'Manual',
+    status: 'available',
+    location: 'Pune',
+    details: {
+      mileage: '29 kmpl',
+      engine: '373.3 cc',
+      power: '39.4 bhp',
+      topSpeed: '155 km/h',
+      bootSpace: 'N/A',
+      fuelTank: '13 L'
+    },
+    features: ['Touring Accessories', 'USD Forks', 'Diamond Cut Wheels', 'LED Headlamp', 'Slipper Clutch'],
+    description: "The Sports Tourer. Built for long-distance dominance with superior comfort and power.",
+    images: [
+
+      '/images/dom.jpg',
+      '/images/dom2.jpg',
+      '/images/dom3.jpeg',
+      '/images/dom4.avif'
+
+
+    ]
+  },
+  {
+    id: 17,
+    name: 'Yamaha R15 V4',
+    brand: 'Yamaha',
+    type: 'Bike',
+    image: '/images/r15.jpg',
+    price: 1200,
+    rating: 4.8,
+    reviews: 500,
+    seats: 2,
+    fuelType: 'Petrol',
+    transmission: 'Manual',
+    status: 'available',
+    location: 'Kochi',
+    details: {
+      mileage: '45 kmpl',
+      engine: '155 cc',
+      power: '18.4 bhp',
+      topSpeed: '140 km/h',
+      bootSpace: 'N/A',
+      fuelTank: '11 L'
+    },
+    features: ['Quickshifter', 'Traction Control', 'VVA Technology', 'Upside Down Forks', 'Track Mode'],
+    description: "Racing DNA. Use the R-World with the most advanced 155cc motorcycle in India.",
+    images: [
+      '/images/r15.jpg',
+      '/images/r2.jpg',
+      '/images/r3.jpg',
+      '/images/r5.jpg'
+    ]
+  },
+  {
+    id: 18,
+    name: 'TVS Apache RR 310',
+    brand: 'TVS',
+    type: 'Bike',
+    image: '/images/TVS Apache RR 310.jpeg',
+    price: 1600,
+    rating: 4.7,
+    reviews: 180,
+    seats: 2,
+    fuelType: 'Petrol',
+    transmission: 'Manual',
+    status: 'available',
+    location: 'Hosur',
+    details: {
+      mileage: '30 kmpl',
+      engine: '312.2 cc',
+      power: '33.5 bhp',
+      topSpeed: '160 km/h',
+      bootSpace: 'N/A',
+      fuelTank: '11 L'
+    },
+    features: ['Ride Modes', 'TFT Display', 'Michelin Tyres', 'BTO Kit', 'SmartXonnect'],
+    description: "Crafted to outperform. A flagship racer from TVS with BMW engineering at its heart.",
+    images: [
+      '/images/TVS Apache RR 310.jpeg',
+      '/images/tvs2.jpg',
+      '/images/tvs3.webp',
+      '/images/tvs4.jpg'
+    ]
+  },
+  {
+    id: 19,
+    name: 'Honda Hness CB350',
+    brand: 'Honda',
+    type: 'Bike',
+    image: '/images/Honda Hness CB350.jpeg',
+    price: 1300,
+    rating: 4.6,
+    reviews: 210,
+    seats: 2,
+    fuelType: 'Petrol',
+    transmission: 'Manual',
+    status: 'available',
+    location: 'Goa',
+    details: {
+      mileage: '35 kmpl',
+      engine: '348 cc',
+      power: '20.8 bhp',
+      topSpeed: '125 km/h',
+      bootSpace: 'N/A',
+      fuelTank: '15 L'
+    },
+    features: ['Honda Smartphone Voice Control', 'Traction Control', 'Assist Slipper Clutch', 'Full LED', 'Chrome Finish'],
+    description: "Your Highness has arrived. A perfect blend of classic style and modern Japanese reliability.",
+    images: [
+      '/images/Honda Hness CB350.jpeg',
+      '/images/honda2.jpg',
+      '/images/hond3.jpg',
+      '/images/honda4.avif'
+    ]
+  },
+  {
+    id: 20,
+    name: 'Jawa 42 Bobber',
+    brand: 'Jawa',
+    type: 'Bike',
+    image: '/images/bob2.avif',
+    price: 1450,
+    rating: 4.5,
+    reviews: 150,
+    seats: 1,
+    fuelType: 'Petrol',
+    transmission: 'Manual',
+    status: 'available',
+    location: 'Mumbai',
+    details: {
+      mileage: '30 kmpl',
+      engine: '334 cc',
+      power: '30.2 bhp',
+      topSpeed: '135 km/h',
+      bootSpace: 'N/A',
+      fuelTank: '12.5 L'
+    },
+    features: ['Floating Seat', 'LED Tail Lamp', 'USB Charging', 'Moonstone White', 'Bar End Mirrors'],
+    description: "Factory Custom. Make a statement with the most stylish and accessible bobber in the country.",
+    images: [
+      '/images/bob2.avif',
+      '/images/Jawa 42 Bobber.jpg',
+      '/images/bob3.avif',
+      '/images/bob4.avif'
+    ]
+  },
+  {
+    id: 21,
+    name: 'Hero Xpulse 200 4V',
+    brand: 'Hero',
+    type: 'Bike',
+    image: '/images/Hero Xpulse 200 4V.jpg',
+    price: 1000,
+    rating: 4.4,
+    reviews: 300,
+    seats: 2,
+    fuelType: 'Petrol',
+    transmission: 'Manual',
+    status: 'available',
+    location: 'Rishikesh',
+    details: {
+      mileage: '40 kmpl',
+      engine: '199.6 cc',
+      power: '18.8 bhp',
+      topSpeed: '115 km/h',
+      bootSpace: 'N/A',
+      fuelTank: '13 L'
+    },
+    features: ['Rally Kit Compatible', 'Turn-by-Turn Nav', 'Long Travel Suspension', 'ABS', 'LED Headlight'],
+    description: "Make New Tracks. India's best entry-level adventure motorcycle for off-road enthusiasts.",
+    images: [
+      '/images/Hero Xpulse 200 4V.jpg',
+      '/images/hero2.jpeg',
+      '/images/hero3.avif',
+      '/images/hero4.jpg'
+    ]
+  },
+  {
+    id: 22,
+    name: 'Ather 450X',
+    brand: 'Ather Energy',
+    type: 'Scooter',
+    image: '/images/ather2.avif',
+    price: 900,
+    rating: 4.8,
+    reviews: 350,
+    seats: 2,
+    fuelType: 'Electric',
+    transmission: 'Automatic',
+    status: 'available',
+    location: 'Bangalore',
+    details: {
+      mileage: '150 km range',
+      engine: 'PMSM Motor',
+      power: '6.4 kW',
+      topSpeed: '90 km/h',
+      bootSpace: '22 L',
+      fuelTank: '3.7 kWh'
+    },
+    features: ['Google Maps', 'Touchscreen', 'Reverse Mode', 'AutoHold', 'Warp Mode'],
+    description: "The Super Scooter. Experience the future of urban commuting with intelligent features and rapid acceleration.",
+    images: [
+      '/images/ather2.avif',
+      '/images/ather 450x.jpeg',
+      '/images/ather3.avif',
+      '/images/ather4.avif'
+    ]
+  },
+  {
+    id: 23,
+    name: 'Ola S1 Pro',
+    brand: 'Ola Electric',
+    type: 'Scooter',
+    image: '/images/Ola S1 Pro.jpg',
+    price: 850,
+    rating: 4.3,
+    reviews: 500,
+    seats: 2,
+    fuelType: 'Electric',
+    transmission: 'Automatic',
+    status: 'available',
+    location: 'Chennai',
+    details: {
+      mileage: '195 km range',
+      engine: 'Mid-Drive Motor',
+      power: '8.5 kW',
+      topSpeed: '120 km/h',
+      bootSpace: '36 L',
+      fuelTank: '4 kWh'
+    },
+    features: ['Hyper Mode', 'Cruise Control', 'Music Playback', 'Digital Key', 'Voice Control'],
+    description: "#EndICEAge. The most powerful electric scooter with best-in-class range and performance.",
+    images: [
+      '/images/Ola S1 Pro.jpg',
+      '/images/ola2.webp',
+      '/images/ola3.avif',
+      '/images/ola4.avif'
+    ]
+  },
+  {
+    id: 24,
+    name: 'Continental GT 650',
+    brand: 'Royal Enfield',
+    type: 'Bike',
+    image: '/images/Continental GT 650.webp',
+    price: 1900,
+    rating: 4.9,
+    reviews: 280,
+    seats: 2,
+    fuelType: 'Petrol',
+    transmission: 'Manual',
+    status: 'available',
+    location: 'Goa',
+    details: {
+      mileage: '25 kmpl',
+      engine: '648 cc',
+      power: '47 bhp',
+      topSpeed: '170 km/h',
+      bootSpace: 'N/A',
+      fuelTank: '12.5 L'
+    },
+    features: ['Twin Cylinder', 'Clip-on Bars', 'Cafe Racer Styling', 'Dual ABS', 'Slipper Clutch'],
+    description: "Ton of Fun. Relive the cafe racer culture with the powerful 650cc parallel twin engine.",
+    images: [
+      '/images/Continental GT 650.webp',
+      '/images/gt2.webp',
+      '/images/gt3.jpg',
+      '/images/gt5.jpg'
+    ]
+  }
+];

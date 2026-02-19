@@ -1,0 +1,85 @@
+erDiagram
+    USERS ||--o{ BOOKINGS : "makes"
+    USERS ||--o{ DRIVER_PROFILES : "has (if driver)"
+    USERS ||--o{ DAMAGE_REPORTS : "reports"
+    USERS ||--o{ BOOKINGS : "drives (as driver)"
+
+    VEHICLES ||--o{ BOOKINGS : "is_booked_in"
+    VEHICLES ||--o{ DAMAGE_REPORTS : "has"
+
+    BOOKINGS ||--o{ PAYMENTS : "has"
+
+    USERS {
+        UUID id PK
+        String email
+        String password_hash
+        String full_name
+        Role role "ADMIN, DRIVER, USER, STAFF"
+        String phone
+        String city
+        String avatar_url
+        LocalDateTime created_at
+    }
+
+    DRIVER_PROFILES {
+        UUID user_id PK, FK
+        String license_number
+        BigDecimal rating
+        DriverStatus status "ACTIVE, ON_TRIP, INACTIVE"
+        jsonb documents
+    }
+
+    VEHICLES {
+        UUID id PK
+        String name
+        String brand
+        VehicleType type "SUV, SEDAN, BIKE, HATCHBACK"
+        BigDecimal price_per_day
+        String location
+        Status status "AVAILABLE, BOOKED, MAINTENANCE"
+        String image_url
+        jsonb features
+        String description
+    }
+
+    BOOKINGS {
+        UUID id PK
+        UUID user_id FK
+        UUID vehicle_id FK
+        UUID driver_id FK
+        LocalDateTime start_date
+        LocalDateTime end_date
+        BigDecimal total_amount
+        BookingStatus status "PENDING, CONFIRMED..."
+        PaymentStatus payment_status
+    }
+
+    PAYMENTS {
+        UUID id PK
+        UUID booking_id FK
+        String razorpay_payment_id
+        String razorpay_order_id
+        String razorpay_signature
+        BigDecimal amount
+        String method
+        String status
+        LocalDateTime created_at
+    }
+
+    DAMAGE_REPORTS {
+        UUID id PK
+        UUID vehicle_id FK
+        UUID reported_by FK
+        String description
+        jsonb images
+        Severity severity
+        DamageStatus status
+        LocalDateTime created_at
+    }
+
+    FILES {
+        String id PK
+        String name
+        String content_type
+        bytea data
+    }

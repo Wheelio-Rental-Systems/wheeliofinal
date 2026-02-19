@@ -1,0 +1,100 @@
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Core Colors */
+  --background: #0A0B0E;
+  --foreground: #F5F5F7;
+
+  /* Use Card/Popover colors slightly lighter than background */
+  --card: #14151A;
+  --card-foreground: #F5F5F7;
+  --popover: #14151A;
+  --popover-foreground: #F5F5F7;
+
+  /* Primary Accent: Cyan #00E5FF */
+  --primary: #00E5FF;
+  --primary-foreground: #000000;
+
+  /* Secondary: Dark Gray/Blueish */
+  --secondary: #1F1F2E;
+  --secondary-foreground: #F5F5F7;
+
+  /* Muted */
+  --muted: #2A2A3E;
+  --muted-foreground: #A8A8B8;
+
+  /* Destructive */
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+
+  /* Borders & Inputs */
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.1);
+  --ring: #00E5FF;
+
+  --radius: 0.75rem;
+
+  /* Font */
+  --font-family: 'Outfit', sans-serif;
+}
+
+.dark {
+  /* Dark mode is the default/only mode for this design, but keeping variables for compatibility */
+  --background: #0A0B0E;
+  --foreground: #F5F5F7;
+  --card: #14151A;
+  --card-foreground: #F5F5F7;
+  --primary: #00E5FF;
+  --primary-foreground: #000000;
+  --secondary: #1F1F2E;
+  --secondary-foreground: #F5F5F7;
+  --muted: #2A2A3E;
+  --muted-foreground: #A8A8B8;
+  --accent: #00E5FF;
+  --accent-foreground: #000000;
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.1);
+  --ring: #00E5FF;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --font-outfit: var(--font-family);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-family);
+  }
+}

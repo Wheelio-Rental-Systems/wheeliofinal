@@ -1,0 +1,1222 @@
+{
+    "info": {
+        "_postman_id": "wheelio-api-collection",
+        "name": "Wheelio API",
+        "description": "Complete API collection for Wheelio Vehicle Rental Platform.\n\nBase URL: http://localhost:8072/api\n\n**How to use:**\n1. Run 'Signup' or 'Login' request first — token is auto-saved\n2. All other requests use the saved token automatically\n3. Admin-only endpoints (Delete User, Update Role, Create/Edit Vehicle) need Admin login\n\n**Seeded Accounts (dev profile):**\n- Admin: admin@wheelio.com / admin123\n- Driver: driver@wheelio.com / driver123\n- Staff: staff@wheelio.com / staff123\n\n**RBAC Rules:**\n- 🔓 Public: Signup, Login, Health Check, File Download\n- 🔑 Authenticated: All GET endpoints, Bookings, Payments, Drivers\n- 🛡️ Admin Only: Delete User, Update Role, Create/Edit/Delete Vehicle",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:8072/api"
+        },
+        {
+            "key": "token",
+            "value": ""
+        },
+        {
+            "key": "userId",
+            "value": ""
+        },
+        {
+            "key": "vehicleId",
+            "value": ""
+        },
+        {
+            "key": "bookingId",
+            "value": ""
+        },
+        {
+            "key": "driverId",
+            "value": ""
+        },
+        {
+            "key": "fileId",
+            "value": ""
+        },
+        {
+            "key": "damageReportId",
+            "value": ""
+        }
+    ],
+    "auth": {
+        "type": "bearer",
+        "bearer": [
+            {
+                "key": "token",
+                "value": "{{token}}",
+                "type": "string"
+            }
+        ]
+    },
+    "item": [
+        {
+            "name": "🔐 Auth",
+            "description": "Authentication endpoints — signup, login, current user, and admin operations.\n\n- Signup & Login are PUBLIC (no token needed)\n- Delete User & Update Role require ADMIN role",
+            "item": [
+                {
+                    "name": "Signup (New User)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "if (jsonData.token) {",
+                                    "    pm.collectionVariables.set('token', jsonData.token);",
+                                    "    pm.collectionVariables.set('userId', jsonData.user.id);",
+                                    "    console.log('✅ Token and UserId saved!');",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"testuser@wheelio.com\",\n    \"password\": \"test123\",\n    \"fullName\": \"Test User\",\n    \"role\": \"USER\",\n    \"phone\": \"9876543210\",\n    \"city\": \"Chennai\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/signup",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "signup"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Login (User)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "if (jsonData.token) {",
+                                    "    pm.collectionVariables.set('token', jsonData.token);",
+                                    "    pm.collectionVariables.set('userId', jsonData.user.id);",
+                                    "    console.log('✅ Token and UserId saved!');",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"testuser@wheelio.com\",\n    \"password\": \"test123\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/login",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "login"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Login (Admin) 🛡️",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "if (jsonData.token) {",
+                                    "    pm.collectionVariables.set('token', jsonData.token);",
+                                    "    pm.collectionVariables.set('userId', jsonData.user.id);",
+                                    "    console.log('✅ Admin token saved!');",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"admin@wheelio.com\",\n    \"password\": \"admin123\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/login",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "login"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Login (Driver)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "if (jsonData.token) {",
+                                    "    pm.collectionVariables.set('token', jsonData.token);",
+                                    "    pm.collectionVariables.set('driverId', jsonData.user.id);",
+                                    "    console.log('✅ Driver token saved!');",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"driver@wheelio.com\",\n    \"password\": \"driver123\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/login",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "login"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Login (Staff)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "if (jsonData.token) {",
+                                    "    pm.collectionVariables.set('token', jsonData.token);",
+                                    "    pm.collectionVariables.set('userId', jsonData.user.id);",
+                                    "    console.log('✅ Staff token saved!');",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"staff@wheelio.com\",\n    \"password\": \"staff123\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/login",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "login"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Current User (Me)",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/me",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "me"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Update User Role 🛡️ (Admin Only)",
+                    "request": {
+                        "method": "PUT",
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/update-role/testuser@wheelio.com?role=DRIVER",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "update-role",
+                                "testuser@wheelio.com"
+                            ],
+                            "query": [
+                                {
+                                    "key": "role",
+                                    "value": "DRIVER",
+                                    "description": "Valid roles: USER, DRIVER, STAFF, ADMIN"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Delete User 🛡️ (Admin Only)",
+                    "request": {
+                        "method": "DELETE",
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/delete/testuser@wheelio.com",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "delete",
+                                "testuser@wheelio.com"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "👤 Users",
+            "description": "User management endpoints. Requires authentication.\nDelete requires ADMIN role.",
+            "item": [
+                {
+                    "name": "Get User by ID",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/users/{{userId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "users",
+                                "{{userId}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Update User Profile",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"fullName\": \"Updated Name\",\n    \"phone\": \"1234567890\",\n    \"city\": \"Mumbai\",\n    \"avatarUrl\": \"/images/avatar.jpg\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/users/{{userId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "users",
+                                "{{userId}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Delete User 🛡️ (Admin Only)",
+                    "request": {
+                        "method": "DELETE",
+                        "url": {
+                            "raw": "{{baseUrl}}/users/{{userId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "users",
+                                "{{userId}}"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "🚗 Vehicles",
+            "description": "Vehicle CRUD and availability.\n- GET: Any authenticated user\n- POST/PUT/DELETE: ADMIN only 🛡️",
+            "item": [
+                {
+                    "name": "Get All Vehicles",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "if (jsonData.length > 0) {",
+                                    "    pm.collectionVariables.set('vehicleId', jsonData[0].id);",
+                                    "    console.log('✅ First vehicleId saved: ' + jsonData[0].id);",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/vehicles",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "vehicles"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Vehicle by ID",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/vehicles/{{vehicleId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "vehicles",
+                                "{{vehicleId}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Available Vehicles",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/vehicles/available",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "vehicles",
+                                "available"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Create Vehicle 🛡️ (Admin Only)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"Toyota Fortuner\",\n    \"brand\": \"Toyota\",\n    \"type\": \"SUV\",\n    \"pricePerDay\": 4500.00,\n    \"location\": \"Chennai\",\n    \"status\": \"AVAILABLE\",\n    \"imageUrl\": \"/images/fortuner.jpg\",\n    \"description\": \"Premium SUV for long drives\",\n    \"features\": [\"7 Seater\", \"4WD\", \"Cruise Control\"]\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/vehicles",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "vehicles"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Update Vehicle 🛡️ (Admin Only)",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"Toyota Fortuner Updated\",\n    \"brand\": \"Toyota\",\n    \"type\": \"SUV\",\n    \"pricePerDay\": 5000.00,\n    \"location\": \"Mumbai\",\n    \"status\": \"AVAILABLE\",\n    \"imageUrl\": \"/images/fortuner.jpg\",\n    \"description\": \"Updated premium SUV\",\n    \"features\": [\"7 Seater\", \"4WD\", \"Cruise Control\", \"Sunroof\"]\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/vehicles/{{vehicleId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "vehicles",
+                                "{{vehicleId}}"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "📅 Bookings",
+            "description": "Booking CRUD, status updates, and filtering.\nAll endpoints require authentication.",
+            "item": [
+                {
+                    "name": "Create Booking (Self-Drive)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "if (jsonData.id) {",
+                                    "    pm.collectionVariables.set('bookingId', jsonData.id);",
+                                    "    console.log('✅ BookingId saved: ' + jsonData.id);",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"userId\": \"{{userId}}\",\n    \"vehicleId\": \"{{vehicleId}}\",\n    \"driverId\": null,\n    \"startDate\": \"2026-02-25T10:00:00\",\n    \"endDate\": \"2026-02-27T18:00:00\",\n    \"totalAmount\": 5500.00\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/bookings",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "bookings"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Create Booking (With Driver)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "if (jsonData.id) {",
+                                    "    pm.collectionVariables.set('bookingId', jsonData.id);",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"userId\": \"{{userId}}\",\n    \"vehicleId\": \"{{vehicleId}}\",\n    \"driverId\": \"{{driverId}}\",\n    \"startDate\": \"2026-03-01T09:00:00\",\n    \"endDate\": \"2026-03-03T20:00:00\",\n    \"totalAmount\": 8200.00\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/bookings",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "bookings"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get All Bookings",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/bookings",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "bookings"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Booking by ID",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/bookings/{{bookingId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "bookings",
+                                "{{bookingId}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Bookings by User",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/bookings/user/{{userId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "bookings",
+                                "user",
+                                "{{userId}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Bookings by Vehicle",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/bookings/vehicle/{{vehicleId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "bookings",
+                                "vehicle",
+                                "{{vehicleId}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Bookings by Driver",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/bookings/driver/{{driverId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "bookings",
+                                "driver",
+                                "{{driverId}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Update Booking Status",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"bookingStatus\": \"COMPLETED\",\n    \"paymentStatus\": \"PAID\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/bookings/{{bookingId}}/status",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "bookings",
+                                "{{bookingId}}",
+                                "status"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Cancel Booking",
+                    "request": {
+                        "method": "DELETE",
+                        "url": {
+                            "raw": "{{baseUrl}}/bookings/{{bookingId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "bookings",
+                                "{{bookingId}}"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "💳 Payments",
+            "description": "Payment recording and verification.\nAll endpoints require authentication.",
+            "item": [
+                {
+                    "name": "Record Payment",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"bookingId\": \"{{bookingId}}\",\n    \"razorpayPaymentId\": \"pay_test_12345\",\n    \"razorpayOrderId\": \"order_test_12345\",\n    \"razorpaySignature\": \"sig_test_12345\",\n    \"amount\": 5500.00,\n    \"method\": \"UPI\",\n    \"status\": \"SUCCESS\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/payments",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "payments"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get All Payments",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/payments",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "payments"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Payments by Booking",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/payments/booking/{{bookingId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "payments",
+                                "booking",
+                                "{{bookingId}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Verify Payment",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"razorpayPaymentId\": \"pay_test_12345\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/payments/verify",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "payments",
+                                "verify"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "🚕 Drivers",
+            "description": "Driver profile management and availability.\nAll endpoints require authentication.",
+            "item": [
+                {
+                    "name": "Get All Drivers",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/drivers",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "drivers"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Available Drivers",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/drivers/available",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "drivers",
+                                "available"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Available Drivers by City",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/drivers/available?city=Chennai",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "drivers",
+                                "available"
+                            ],
+                            "query": [
+                                {
+                                    "key": "city",
+                                    "value": "Chennai"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Driver Profile",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/drivers/{{driverId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "drivers",
+                                "{{driverId}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Create Driver Profile",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"userId\": \"{{driverId}}\",\n    \"licenseNumber\": \"TN-01-2026-123456\",\n    \"rating\": 4.8,\n    \"status\": \"ACTIVE\",\n    \"documents\": {\n        \"license\": \"uploaded\",\n        \"insurance\": \"uploaded\"\n    }\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/drivers",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "drivers"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Update Driver Profile",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"licenseNumber\": \"TN-01-2026-654321\",\n    \"rating\": 4.9,\n    \"status\": \"ON_TRIP\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/drivers/{{driverId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "drivers",
+                                "{{driverId}}"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "🛡️ Damage Reports",
+            "description": "Vehicle damage report management.\nAll endpoints require authentication.",
+            "item": [
+                {
+                    "name": "Create Damage Report",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "if (jsonData.id) {",
+                                    "    pm.collectionVariables.set('damageReportId', jsonData.id);",
+                                    "    console.log('✅ DamageReportId saved: ' + jsonData.id);",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"vehicleId\": \"{{vehicleId}}\",\n    \"reportedById\": \"{{userId}}\",\n    \"description\": \"Minor scratch on left side door\",\n    \"severity\": \"MINOR\",\n    \"images\": [],\n    \"estimatedCost\": 2500.00\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/damage-reports",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "damage-reports"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get All Damage Reports",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/damage-reports",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "damage-reports"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Damage Report by ID",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/damage-reports/{{damageReportId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "damage-reports",
+                                "{{damageReportId}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Reports by Vehicle",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/damage-reports/vehicle/{{vehicleId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "damage-reports",
+                                "vehicle",
+                                "{{vehicleId}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Reports by User",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/damage-reports/user/{{userId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "damage-reports",
+                                "user",
+                                "{{userId}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Reports by Status",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/damage-reports/status/OPEN",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "damage-reports",
+                                "status",
+                                "OPEN"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Update Report Status",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"status\": \"ESTIMATED\",\n    \"severity\": \"MODERATE\",\n    \"estimatedCost\": \"5000\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/damage-reports/{{damageReportId}}/status",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "damage-reports",
+                                "{{damageReportId}}",
+                                "status"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Mark Report as Paid",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"razorpayPaymentId\": \"pay_damage_12345\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/damage-reports/{{damageReportId}}/pay",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "damage-reports",
+                                "{{damageReportId}}",
+                                "pay"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "📁 Files",
+            "description": "File upload and download.\n- Upload requires authentication\n- Download is public",
+            "item": [
+                {
+                    "name": "Upload File",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "if (jsonData.fileId) {",
+                                    "    pm.collectionVariables.set('fileId', jsonData.fileId);",
+                                    "    console.log('✅ FileId saved: ' + jsonData.fileId);",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "file",
+                                    "type": "file",
+                                    "src": ""
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/files/upload",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "files",
+                                "upload"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Download File (by ID)",
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/files/{{fileId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "files",
+                                "{{fileId}}"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "❤️ Health",
+            "description": "Health check endpoint — no auth needed",
+            "item": [
+                {
+                    "name": "Health Check",
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/health",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "health"
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+    ]
+}
