@@ -1,28 +1,34 @@
 pipeline {
     agent any
 
-    /* 
-    NOTE: The 'tools' block was removed because 'maven-3.9.6', 'jdk-17', and 'nodejs' 
-    were not configured in your Jenkins Global Tool Configuration.
-    
-    To fix this properly:
-    1. Go to Jenkins -> Manage Jenkins -> Global Tool Configuration.
-    2. Add Maven and JDK with the EXACT names 'maven-3.9.6' and 'jdk-17'.
-    3. Install the 'NodeJS' plugin and add a NodeJS installation named 'node-20'.
-    */
+    options {
+        // Handle checkout manually to inject git configs and retries
+        skipDefaultCheckout()
+        timeout(time: 30, unit: 'MINUTES')
+    }
 
     stages {
         stage('Checkout') {
             steps {
-                checkout scm
+                script {
+                    // Resolve 'curl 18 transfer closed' by increasing Git buffer
+                    // Using 'bat' because Jenkins is detected to be running on Windows
+                    bat 'git config --global http.postBuffer 1048576000'
+                    bat 'git config --global http.lowSpeedLimit 0'
+                    bat 'git config --global http.lowSpeedTime 999999'
+                    
+                    retry(3) {
+                        checkout scm
+                    }
+                }
             }
         }
 
-        stage('Backend Build & Test') {
+        stage('Backend Build') {
             steps {
                 dir('wheelio-backend') {
-                    // Using 'sh' but you might need 'bat' if Jenkins is running on Windows
-                    sh 'mvn clean install -DskipTests' 
+                    // Using 'bat' for Windows environment
+                    bat 'mvn clean install -DskipTests'
                 }
             }
         }
@@ -30,8 +36,8 @@ pipeline {
         stage('Frontend Build') {
             steps {
                 dir('frontend') {
-                    sh 'npm install'
-                    sh 'npm run build'
+                    bat 'npm install'
+                    bat 'npm run build'
                 }
             }
         }
@@ -46,7 +52,14 @@ pipeline {
 
     post {
         always {
-            cleanWs()
+            // Only clean if workspace exists to avoid context errors
+            script {
+                try {
+                    cleanWs()
+                } catch (e) {
+                    echo "Skipping workspace cleanup: ${e.message}"
+                }
+            }
         }
     }
 }
