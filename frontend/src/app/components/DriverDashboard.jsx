@@ -3,7 +3,7 @@ import {
     MapPin, Calendar, Clock, Phone, CheckCircle,
     LayoutDashboard, Car, ClipboardCheck, Wallet, User,
     Bell, Star, LogOut, ChevronRight, Upload, AlertTriangle,
-    IndianRupee, Navigation, Shield
+    IndianRupee, Navigation, Shield, FileText
 } from 'lucide-react';
 import * as bookingsAPI from '../../api/bookings';
 import * as filesAPI from '../../api/files';
@@ -17,6 +17,7 @@ const DriverDashboard = ({ onNavigate, user, onLogout, onUpdateUser }) => {
     const [activeTab, setActiveTab] = useState('overview');
     const [isOnline, setIsOnline] = useState(true);
     const [trips, setTrips] = useState([]);
+    const [previewDoc, setPreviewDoc] = useState(null);
     const [stats, setStats] = useState({
         todayEarnings: 0,
         tripsToday: 0,
@@ -24,10 +25,9 @@ const DriverDashboard = ({ onNavigate, user, onLogout, onUpdateUser }) => {
         onlineHours: '0'
     });
 
-    // Notification State
-    const [notifications, setNotifications] = useState([]);
+    // Notifications state removed
     const [seenBookingIds, setSeenBookingIds] = useState(new Set());
-    const [unreadCount, setUnreadCount] = useState(0);
+    // Save notifications effect removed
 
     // Settings State
     const [expandedSection, setExpandedSection] = useState(null);
@@ -70,42 +70,44 @@ const DriverDashboard = ({ onNavigate, user, onLogout, onUpdateUser }) => {
                 return true;
             });
 
-            const formattedTrips = uniqueBookings.map((b) => ({
-                id: b.id,
-                pickup: b.pickupLocation || 'Pickup Location',
-                drop: b.dropLocation || 'Drop Location',
-                time: b.startDate ? new Date(b.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
-                date: b.startDate ? new Date(b.startDate).toLocaleDateString() : '',
-                endDate: b.endDate ? new Date(b.endDate).toLocaleDateString() : '',
-                customer: b.user?.name || b.userName || 'Customer',
-                customerEmail: b.user?.email || '',
-                phone: b.user?.phone || b.phone || '',
-                vehicle: b.vehicle?.name || b.vehicleName || 'Vehicle',
-                vehicleModel: b.vehicle?.model || '',
-                status: b.status || 'PENDING',
-                paymentStatus: b.paymentStatus || 'PENDING',
-                fare: b.totalAmount ? `₹${Number(b.totalAmount).toLocaleString()}` : '₹0',
-                rawAmount: Number(b.totalAmount) || 0,
-                createdAt: b.createdAt,
-            })).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+            const formattedTrips = uniqueBookings.map((b) => {
+                // Calculate duration for driver allowance
+                const start = new Date(b.startDate);
+                const end = new Date(b.endDate);
+                const diffTime = Math.abs(end - start);
+                const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
+                const driverAllowance = 800 * days;
 
-            // Detect new bookings for notifications
+                return {
+                    id: b.id,
+                    pickup: b.pickupLocation || 'Not Provided',
+                    drop: b.dropLocation || 'Not Provided',
+                    time: b.startDate ? new Date(b.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+                    date: b.startDate ? new Date(b.startDate).toLocaleDateString() : '',
+                    endDate: b.endDate ? new Date(b.endDate).toLocaleDateString() : '',
+                    customer: b.user?.name || b.userName || 'Customer',
+                    customerEmail: b.user?.email || '',
+                    phone: b.user?.phone || b.phone || '', // Keep raw phone
+                    vehicle: b.vehicle?.name || b.vehicleName || 'Vehicle',
+                    vehicleModel: b.vehicle?.model || '',
+                    status: b.status || 'PENDING',
+                    paymentStatus: b.paymentStatus || 'PENDING',
+                    fare: b.totalAmount ? `₹${Number(b.totalAmount).toLocaleString()}` : '₹0',
+                    rawAmount: Number(b.totalAmount) || 0,
+                    driverAllowance: `₹${driverAllowance.toLocaleString()}`, // Formatted allowance
+                    createdAt: b.createdAt,
+                };
+            }).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+            // Detect new bookings for toasts (kept for alerts only, no persistent list)
             if (isPolling && seenBookingIds.size > 0) {
                 const newBookings = formattedTrips.filter(t => !seenBookingIds.has(t.id));
                 if (newBookings.length > 0) {
-                    const newNotifs = newBookings.map(b => ({
-                        id: `notif-${b.id}`,
-                        type: 'new_booking',
-                        title: 'New Booking Assigned!',
-                        message: `${b.customer} booked ${b.vehicle} for ${b.date}`,
-                        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                        read: false,
-                        bookingId: b.id,
-                    }));
-                    setNotifications(prev => [...newNotifs, ...prev]);
-                    setUnreadCount(prev => prev + newBookings.length);
                     newBookings.forEach(b => {
-                        toast.success(`🚗 New booking from ${b.customer}!`, { description: `${b.vehicle} • ${b.date}` });
+                        toast.success(`🚗 New booking from ${b.customer}!`, {
+                            description: `${b.vehicle} • ${b.pickup} → ${b.drop} • ${b.date}`,
+                            duration: 10000
+                        });
                     });
                 }
             }
@@ -189,7 +191,7 @@ const DriverDashboard = ({ onNavigate, user, onLogout, onUpdateUser }) => {
                 {[
                     { id: 'overview', icon: LayoutDashboard, label: 'Dashboard' },
                     { id: 'trips', icon: Car, label: 'My Trips' },
-                    { id: 'notifications', icon: Bell, label: 'Notifications', badge: unreadCount },
+                    // Notifications removed
                     { id: 'inspections', icon: ClipboardCheck, label: 'Vehicle Inspections' },
                     { id: 'damage-report', icon: AlertTriangle, label: 'Report Damage' },
                     { id: 'earnings', icon: Wallet, label: 'Earnings' },
@@ -197,7 +199,7 @@ const DriverDashboard = ({ onNavigate, user, onLogout, onUpdateUser }) => {
                 ].map(item => (
                     <button
                         key={item.id}
-                        onClick={() => { setActiveTab(item.id); if (item.id === 'notifications') setUnreadCount(0); }}
+                        onClick={() => setActiveTab(item.id)}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all relative ${activeTab === item.id
                             ? 'bg-primary text-black font-bold shadow-lg shadow-primary/20'
                             : 'text-gray-400 hover:text-white hover:bg-white/5'
@@ -279,31 +281,43 @@ const DriverDashboard = ({ onNavigate, user, onLogout, onUpdateUser }) => {
                                 </div>
                                 <div>
                                     <p className="text-gray-400 text-sm">Heading to</p>
-                                    <h3 className="text-xl font-bold text-white">{trips[0].pickup}</h3>
+                                    <h3 className="text-xl font-bold text-white">{trips[0].drop}</h3>
                                 </div>
                             </div>
-                            <div className="flex gap-4 text-sm text-gray-300 ml-2 border-l-2 border-dashed border-white/20 pl-6 py-2">
+                            <div className="flex flex-wrap gap-6 text-sm text-gray-300 ml-2 border-l-2 border-dashed border-white/20 pl-6 py-2">
                                 <div className="space-y-1">
-                                    <p className="text-xs text-gray-500 uppercase">Customer</p>
+                                    <p className="text-xs text-gray-500 uppercase font-bold">Pick</p>
+                                    <p className="text-white">{trips[0].pickup}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-xs text-gray-500 uppercase font-bold">Drop</p>
+                                    <p className="text-white">{trips[0].drop}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-xs text-gray-500 uppercase font-bold">Fare</p>
+                                    <p className="text-primary font-bold">{trips[0].fare}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-xs text-gray-500 uppercase font-bold">My Earnings</p>
+                                    <p className="text-green-400 font-bold">{trips[0].driverAllowance}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-xs text-gray-500 uppercase font-bold">Customer</p>
                                     <p>{trips[0].customer}</p>
-                                </div>
-                                <div className="space-y-1">
-                                    <p className="text-xs text-gray-500 uppercase">Est. Fare</p>
-                                    <p>{trips[0].fare}</p>
-                                </div>
-                                <div className="space-y-1">
-                                    <p className="text-xs text-gray-500 uppercase">Car</p>
-                                    <p>{trips[0].vehicle}</p>
                                 </div>
                             </div>
                         </div>
-                        <div className="flex flex-row md:flex-col gap-3 min-w-[150px]">
-                            <Button className="w-full bg-primary text-black hover:bg-cyan-400">
-                                Navigate
-                            </Button>
-                            <Button variant="outline" className="w-full border-white/10 hover:bg-white/10 text-white">
-                                Call Customer
-                            </Button>
+                        <div className="flex flex-row md:flex-col gap-3 min-w-[200px]">
+                            {trips[0].phone && (
+                                <Button
+                                    variant="outline"
+                                    className="w-full border-white/10 hover:bg-white/10 text-white flex flex-col items-center h-auto py-3 gap-1"
+                                    onClick={() => window.location.href = `tel:${trips[0].phone}`}
+                                >
+                                    <span className="text-sm font-bold">Call Customer</span>
+                                    <span className="text-xs text-primary">{trips[0].phone}</span>
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -361,17 +375,28 @@ const DriverDashboard = ({ onNavigate, user, onLogout, onUpdateUser }) => {
                             </div>
                         </div>
                         <div className="flex items-center justify-between bg-black/20 rounded-xl p-4">
+                            <div className="text-center flex-1">
+                                <p className="text-[10px] text-gray-500 uppercase">Pickup</p>
+                                <p className="text-xs font-medium text-white line-clamp-1">{trip.pickup}</p>
+                            </div>
+                            <div className="px-4 text-gray-600">→</div>
+                            <div className="text-center flex-1">
+                                <p className="text-[10px] text-gray-500 uppercase">Drop</p>
+                                <p className="text-xs font-medium text-white line-clamp-1">{trip.drop}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-between bg-black/20 rounded-xl p-4 mt-2">
                             <div className="text-center">
-                                <p className="text-xs text-gray-500 uppercase">Fare</p>
-                                <p className="text-lg font-bold text-white">{trip.fare}</p>
+                                <p className="text-[10px] text-gray-500 uppercase">Fare</p>
+                                <p className="text-base font-bold text-white">{trip.fare}</p>
                             </div>
                             <div className="text-center">
-                                <p className="text-xs text-gray-500 uppercase">Vehicle</p>
-                                <p className="text-sm font-medium text-white">{trip.vehicle}</p>
+                                <p className="text-[10px] text-gray-500 uppercase">Vehicle</p>
+                                <p className="text-xs font-medium text-white">{trip.vehicle}</p>
                             </div>
                             <div className="text-center">
-                                <p className="text-xs text-gray-500 uppercase">Date</p>
-                                <p className="text-sm font-medium text-white">{trip.date}</p>
+                                <p className="text-[10px] text-gray-500 uppercase">Date</p>
+                                <p className="text-xs font-medium text-white">{trip.date}</p>
                             </div>
                         </div>
                         {trip.status === 'CONFIRMED' && (
@@ -394,53 +419,7 @@ const DriverDashboard = ({ onNavigate, user, onLogout, onUpdateUser }) => {
         </div>
     );
 
-    const Notifications = () => (
-        <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
-            <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-white">Notifications</h2>
-                {notifications.length > 0 && (
-                    <Button variant="outline" onClick={() => { setNotifications(prev => prev.map(n => ({ ...n, read: true }))); setUnreadCount(0); }} className="text-xs text-gray-400 border-white/10 hover:bg-white/10">
-                        Mark all read
-                    </Button>
-                )}
-            </div>
-            {notifications.length > 0 ? (
-                <div className="space-y-3">
-                    {notifications.map((notif) => (
-                        <div
-                            key={notif.id}
-                            onClick={() => { if (!notif.read) { setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, read: true } : n)); } setActiveTab('trips'); }}
-                            className={`bg-card/50 border rounded-2xl p-5 cursor-pointer transition-all hover:border-primary/30 ${notif.read ? 'border-white/5 opacity-70' : 'border-primary/20 bg-primary/5'
-                                }`}
-                        >
-                            <div className="flex items-start gap-4">
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${notif.type === 'new_booking' ? 'bg-green-500/20 text-green-400' : 'bg-primary/20 text-primary'
-                                    }`}>
-                                    {notif.type === 'new_booking' ? <Car size={20} /> : <Bell size={20} />}
-                                </div>
-                                <div className="flex-1">
-                                    <div className="flex justify-between items-start">
-                                        <h4 className="font-bold text-white text-sm">{notif.title}</h4>
-                                        <span className="text-xs text-gray-500">{notif.time}</span>
-                                    </div>
-                                    <p className="text-sm text-gray-400 mt-1">{notif.message}</p>
-                                </div>
-                                {!notif.read && <div className="w-2.5 h-2.5 bg-primary rounded-full shrink-0 mt-2 shadow-lg shadow-primary/50" />}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            ) : (
-                <div className="text-center py-16">
-                    <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Bell size={32} className="text-gray-500" />
-                    </div>
-                    <h3 className="text-xl font-bold text-white mb-2">No Notifications</h3>
-                    <p className="text-gray-400">You'll be notified when users book rides with you.</p>
-                </div>
-            )}
-        </div>
-    );
+    // Notifications component removed
 
     const Inspections = () => {
         const [selectedVehicle, setSelectedVehicle] = useState(null);
@@ -519,9 +498,6 @@ const DriverDashboard = ({ onNavigate, user, onLogout, onUpdateUser }) => {
             <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
                 <div className="flex justify-between items-center">
                     <h2 className="text-2xl font-bold text-white">Vehicle Inspections</h2>
-                    <Button variant="outline" className="text-primary border-primary/20 hover:bg-primary/10">
-                        <Upload size={16} className="mr-2" /> Scan QR Code
-                    </Button>
                 </div>
 
                 <div className="grid gap-4">
@@ -699,8 +675,8 @@ const DriverDashboard = ({ onNavigate, user, onLogout, onUpdateUser }) => {
                 try {
                     const response = await filesAPI.uploadFile(file);
 
-                    // Construct URL
-                    const fileUrl = `http://localhost:8072/api/files/${response.fileId}`;
+                    // Use relative URL so it works via Vite proxy in dev and any deployment
+                    const fileUrl = `/api/files/${response.fileId}`;
 
                     if (docName === 'Avatar') {
                         // Update User Profile (Avatar)
@@ -718,16 +694,33 @@ const DriverDashboard = ({ onNavigate, user, onLogout, onUpdateUser }) => {
                             // 1. Get current documents or empty object
                             const currentDocs = driverProfile?.documents || {};
 
-                            // 2. Update specific document
+                            // 2. Merge with new document
                             const updatedDocs = {
                                 ...currentDocs,
                                 [docName]: fileUrl
                             };
 
-                            // 3. Send update to backend
-                            const updatedProfile = await driversAPI.updateDriverProfile(user.id, {
-                                documents: updatedDocs
-                            });
+                            let updatedProfile;
+                            try {
+                                // 3a. Try updating existing profile
+                                updatedProfile = await driversAPI.updateDriverProfile(user.id, {
+                                    documents: updatedDocs
+                                });
+                            } catch (updateErr) {
+                                // 3b. Profile doesn't exist yet — create it first
+                                console.log("No driver profile found, creating one...");
+                                await driversAPI.createDriverProfile({
+                                    email: user.email,
+                                    fullName: user.name || user.fullName,
+                                    phone: user.phone || '',
+                                    city: user.city || '',
+                                    licenseNumber: 'PENDING',
+                                });
+                                // Now update documents
+                                updatedProfile = await driversAPI.updateDriverProfile(user.id, {
+                                    documents: updatedDocs
+                                });
+                            }
 
                             // 4. Update local state
                             setDriverProfile(updatedProfile);
@@ -738,7 +731,7 @@ const DriverDashboard = ({ onNavigate, user, onLogout, onUpdateUser }) => {
 
                 } catch (error) {
                     console.error("Upload failed", error);
-                    toast.error(`Failed to upload ${docName}`, { id: toastId });
+                    toast.error(`Failed to upload ${docName}. Please try again.`, { id: toastId });
                 } finally {
                     setIsUploading(false);
                 }
@@ -848,7 +841,14 @@ const DriverDashboard = ({ onNavigate, user, onLogout, onUpdateUser }) => {
                                     <div>
                                         <p className="text-white font-medium">{doc.name}</p>
                                         <p className="text-xs text-gray-500">
-                                            {isUploaded ? <a href={isUploaded} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">View Document</a> : 'Pending Upload'}
+                                            {isUploaded ? (
+                                                <button
+                                                    onClick={() => setPreviewDoc({ name: doc.name, url: isUploaded })}
+                                                    className="text-primary hover:underline"
+                                                >
+                                                    View Document
+                                                </button>
+                                            ) : 'Pending Upload'}
                                         </p>
                                     </div>
                                 </div>
@@ -1014,15 +1014,47 @@ const DriverDashboard = ({ onNavigate, user, onLogout, onUpdateUser }) => {
         );
     };
 
+    const DocumentPreviewModal = () => {
+        if (!previewDoc) return null;
+
+        return (
+            <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex flex-col p-4 md:p-8 animate-in fade-in duration-300">
+                <div className="flex justify-between items-center mb-6 max-w-5xl mx-auto w-full">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-primary/20 rounded-lg text-primary">
+                            <FileText size={20} />
+                        </div>
+                        <h2 className="text-xl font-bold text-white">{previewDoc.name}</h2>
+                    </div>
+                    <button
+                        onClick={() => setPreviewDoc(null)}
+                        className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all border border-white/10 hover:border-white/20"
+                    >
+                        <ChevronRight className="rotate-180" size={18} /> Back to Dashboard
+                    </button>
+                </div>
+
+                <div className="flex-1 max-w-5xl mx-auto w-full bg-[#151520] rounded-3xl overflow-hidden border border-white/5 relative shadow-2xl">
+                    <img
+                        src={previewDoc.url}
+                        alt={previewDoc.name}
+                        className="w-full h-full object-contain"
+                    />
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="min-h-screen bg-background text-white flex relative z-0">
             <Sidebar />
+            <DocumentPreviewModal />
 
             <main className="flex-1 lg:ml-64 pt-24 px-4 pb-12 w-full max-w-5xl mx-auto z-0">
                 <h1 className="text-3xl font-bold mb-6 lg:hidden">Driver Dashboard</h1>
                 {activeTab === 'overview' && <Overview />}
                 {activeTab === 'trips' && <TripsList />}
-                {activeTab === 'notifications' && <Notifications />}
+                {/* Notifications removed */}
                 {activeTab === 'inspections' && <Inspections />}
                 {activeTab === 'damage-report' && <DamageReportSection />}
                 {activeTab === 'earnings' && <Earnings />}

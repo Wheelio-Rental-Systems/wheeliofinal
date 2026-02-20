@@ -73,7 +73,9 @@ CREATE TABLE damage_reports (
     description TEXT NOT NULL,
     images JSONB, -- Array of image URLs
     severity VARCHAR(20) CHECK (severity IN ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL')),
-    status VARCHAR(20) DEFAULT 'OPEN' CHECK (status IN ('OPEN', 'INVESTIGATING', 'RESOLVED')),
+    status VARCHAR(20) DEFAULT 'OPEN' CHECK (status IN ('OPEN', 'INVESTIGATING', 'ESTIMATED', 'RESOLVED', 'PAID')),
+    estimated_cost DECIMAL(10, 2),
+    razorpay_payment_id VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

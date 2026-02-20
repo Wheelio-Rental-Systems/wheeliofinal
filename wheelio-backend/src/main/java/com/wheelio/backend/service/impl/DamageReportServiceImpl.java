@@ -5,32 +5,23 @@ import com.wheelio.backend.repository.DamageReportRepository;
 import com.wheelio.backend.service.DamageReportService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Service
-@Transactional
 public class DamageReportServiceImpl implements DamageReportService {
 
-    private final DamageReportRepository damageReportRepository;
-
     @Autowired
-    public DamageReportServiceImpl(DamageReportRepository damageReportRepository) {
-        this.damageReportRepository = damageReportRepository;
+    private DamageReportRepository damageReportRepository;
+
+    @Override
+    public DamageReport createDamageReport(DamageReport report) {
+        return damageReportRepository.save(report);
     }
 
     @Override
-    public DamageReport createDamageReport(DamageReport damageReport) {
-        damageReport.setCreatedAt(LocalDateTime.now());
-        return damageReportRepository.save(damageReport);
-    }
-
-    @Override
-    public Optional<DamageReport> getDamageReportById(UUID id) {
+    public Optional<DamageReport> getDamageReportById(String id) {
         return damageReportRepository.findById(id);
     }
 
@@ -40,8 +31,13 @@ public class DamageReportServiceImpl implements DamageReportService {
     }
 
     @Override
-    public List<DamageReport> getDamageReportsByVehicleId(UUID vehicleId) {
+    public List<DamageReport> getDamageReportsByVehicleId(String vehicleId) {
         return damageReportRepository.findByVehicleId(vehicleId);
+    }
+
+    @Override
+    public List<DamageReport> getDamageReportsByUserId(String userId) {
+        return damageReportRepository.findByReportedById(userId);
     }
 
     @Override
@@ -50,22 +46,12 @@ public class DamageReportServiceImpl implements DamageReportService {
     }
 
     @Override
-    public List<DamageReport> getDamageReportsBySeverity(DamageReport.Severity severity) {
-        return damageReportRepository.findBySeverity(severity);
+    public DamageReport updateDamageReport(DamageReport report) {
+        return damageReportRepository.save(report);
     }
 
     @Override
-    public List<DamageReport> getDamageReportsByUserId(UUID userId) {
-        return damageReportRepository.findByReportedById(userId);
-    }
-
-    @Override
-    public DamageReport updateDamageReport(DamageReport damageReport) {
-        return damageReportRepository.save(damageReport);
-    }
-
-    @Override
-    public void deleteDamageReport(UUID id) {
+    public void deleteDamageReport(String id) {
         damageReportRepository.deleteById(id);
     }
 }

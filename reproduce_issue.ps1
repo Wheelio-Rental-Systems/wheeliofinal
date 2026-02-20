@@ -1,6 +1,6 @@
 
 # 1. Login
-$loginUrl = "http://localhost:8072/api/auth/login"
+$loginUrl = "http://localhost:8073/api/auth/login"
 $loginBody = @{
     email    = "admin@wheelio.com"
     password = "admin123"
@@ -18,13 +18,13 @@ catch {
 }
 
 # 2. Get Vehicles
-$vehicleUrl = "http://localhost:8072/api/vehicles"
+$vehicleUrl = "http://localhost:8073/api/vehicles"
 try {
     $vehicles = Invoke-RestMethod -Uri $vehicleUrl -Method Get -Headers @{ Authorization = "Bearer $token" }
     if ($vehicles.Count -eq 0) {
         Write-Warning "No vehicles found. Creating one..."
         # Create a dummy vehicle for testing
-        $createVehicleUrl = "http://localhost:8072/api/vehicles"
+        $createVehicleUrl = "http://localhost:8073/api/vehicles"
         $vehicleBody = @{
             name     = "Test Car"
             type     = "Sedan"
@@ -49,7 +49,7 @@ catch {
 }
 
 # 3. Create Booking (The Failure Point)
-$bookingUrl = "http://localhost:8072/api/bookings"
+$bookingUrl = "http://localhost:8073/api/bookings"
 $bookingBody = @{
     userId      = $userId
     vehicleId   = $vehicleId

@@ -1,6 +1,7 @@
 package com.wheelio.backend.controller;
 
 import com.wheelio.backend.model.Booking;
+import com.wheelio.backend.model.Vehicle;
 import com.wheelio.backend.service.BookingService;
 import com.wheelio.backend.service.UserService;
 import com.wheelio.backend.service.VehicleService;
@@ -15,10 +16,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/bookings")
@@ -41,101 +40,98 @@ public class BookingController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getBookingById(@PathVariable UUID id) {
+    public ResponseEntity<?> getBookingById(@PathVariable String id) {
         return bookingService.getBookingById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/user/{userId}")
-    public List<Booking> getBookingsByUser(@PathVariable UUID userId) {
+    public List<Booking> getBookingsByUser(@PathVariable String userId) {
         return bookingService.getBookingsByUserId(userId);
     }
 
     @GetMapping("/vehicle/{vehicleId}")
-    public List<Booking> getBookingsByVehicle(@PathVariable UUID vehicleId) {
+    public List<Booking> getBookingsByVehicle(@PathVariable String vehicleId) {
         return bookingService.getBookingsByVehicleId(vehicleId);
     }
 
     @GetMapping("/driver/{driverId}")
-    public List<Booking> getBookingsByDriver(@PathVariable UUID driverId) {
+    public List<Booking> getBookingsByDriver(@PathVariable String driverId) {
         return bookingService.getBookingsByDriverId(driverId);
     }
 
     @PostMapping
     public ResponseEntity<?> createBooking(@RequestBody BookingRequest request) {
         try {
-            logger.info("Booking request received for userId={}, vehicleId={}", request.getUserId(),
-                    request.getVehicleId());
+            logger.info("Booking request: userId={}, vehicleId={}", request.getUserId(), request.getVehicleId());
 
-            Booking booking = new Booking();
-
-            // Look up user - required
+            // Validate user exists
             var userOpt = userService.getUserById(request.getUserId());
             if (userOpt.isEmpty()) {
-                Map<String, String> error = new HashMap<>();
-                error.put("error", "User not found with ID: " + request.getUserId());
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("error", "User not found: " + request.getUserId()));
             }
-            booking.setUser(userOpt.get());
 
-            // Look up vehicle - required
+            // Validate vehicle exists
             var vehicleOpt = vehicleService.getVehicleById(request.getVehicleId());
             if (vehicleOpt.isEmpty()) {
-                Map<String, String> error = new HashMap<>();
-                error.put("error", "Vehicle not found with ID: " + request.getVehicleId());
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-            }
-            booking.setVehicle(vehicleOpt.get());
-
-            // Look up driver - OPTIONAL: if not found, just set null (self-drive mode)
-            if (request.getDriverId() != null) {
-                booking.setDriver(userService.getUserById(request.getDriverId()).orElse(null));
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("error", "Vehicle not found: " + request.getVehicleId()));
             }
 
-            // Parse dates - handle multiple formats including missing seconds
+            Vehicle vehicle = vehicleOpt.get();
+            var user = userOpt.get();
+
+            Booking booking = new Booking();
+            booking.setUserId(request.getUserId());
+            booking.setUserName(user.getFullName());
+            booking.setVehicleId(request.getVehicleId());
+
+            // Build denormalized vehicle snapshot
+            Booking.VehicleSummary summary = new Booking.VehicleSummary(
+                    vehicle.getId(), vehicle.getName(), vehicle.getBrand(),
+                    vehicle.getType() != null ? vehicle.getType().name() : "",
+                    vehicle.getImageUrl(), vehicle.getPricePerDay(), vehicle.getLocation());
+            booking.setVehicleSummary(summary);
+
+            if (request.getDriverId() != null && !request.getDriverId().isEmpty()) {
+                booking.setDriverId(request.getDriverId());
+            }
+
             booking.setStartDate(parseFlexibleDate(request.getStartDate()));
             booking.setEndDate(parseFlexibleDate(request.getEndDate()));
-
             booking.setTotalAmount(request.getTotalAmount());
+            booking.setPickupLocation(request.getPickupLocation());
+            booking.setDropLocation(request.getDropLocation());
+            booking.setContactPhone(request.getContactPhone());
             booking.setStatus(Booking.BookingStatus.CONFIRMED);
             booking.setPaymentStatus(Booking.PaymentStatus.PAID);
+            booking.setCreatedAt(LocalDateTime.now());
 
-            Booking savedBooking = bookingService.createBooking(booking);
-            logger.info("Booking created successfully: {}", savedBooking.getId());
-            return ResponseEntity.ok(savedBooking);
+            Booking saved = bookingService.createBooking(booking);
+            logger.info("Booking created: {}", saved.getId());
+            return ResponseEntity.ok(saved);
         } catch (Exception e) {
             logger.error("Booking creation failed: {}", e.getMessage(), e);
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Failed to create booking: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Failed to create booking: " + e.getMessage()));
         }
     }
 
-    /**
-     * Flexibly parse date strings from the frontend.
-     * Handles: "2026-02-20T10:00:00", "2026-02-20T10:00",
-     * "2026-02-20T10:00:00.000Z"
-     */
     private LocalDateTime parseFlexibleDate(String dateStr) {
-        if (dateStr == null || dateStr.isEmpty()) {
+        if (dateStr == null || dateStr.isEmpty())
             return LocalDateTime.now();
-        }
-        // Remove trailing Z (UTC indicator) since we treat as local
         dateStr = dateStr.replace("Z", "");
-
         try {
             return LocalDateTime.parse(dateStr, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
         } catch (DateTimeParseException e1) {
-            // Try without seconds
             try {
                 return LocalDateTime.parse(dateStr, DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm"));
             } catch (DateTimeParseException e2) {
-                // Try just date
                 try {
                     return LocalDateTime.parse(dateStr + "T00:00:00", DateTimeFormatter.ISO_LOCAL_DATE_TIME);
                 } catch (DateTimeParseException e3) {
-                    System.err.println("Could not parse date: " + dateStr + ", using current time");
                     return LocalDateTime.now();
                 }
             }
@@ -143,9 +139,7 @@ public class BookingController {
     }
 
     @PutMapping("/{id}/status")
-    public ResponseEntity<?> updateBookingStatus(
-            @PathVariable UUID id,
-            @RequestBody Map<String, String> request) {
+    public ResponseEntity<?> updateBookingStatus(@PathVariable String id, @RequestBody Map<String, String> request) {
         return bookingService.getBookingById(id)
                 .map(booking -> {
                     if (request.containsKey("bookingStatus")) {
@@ -160,49 +154,49 @@ public class BookingController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> cancelBooking(@PathVariable UUID id) {
+    public ResponseEntity<?> cancelBooking(@PathVariable String id) {
         return bookingService.getBookingById(id)
                 .map(booking -> {
                     booking.setStatus(Booking.BookingStatus.CANCELLED);
                     bookingService.updateBooking(booking);
-                    Map<String, String> response = new HashMap<>();
-                    response.put("message", "Booking cancelled successfully");
-                    return ResponseEntity.ok(response);
+                    return ResponseEntity.ok(Map.of("message", "Booking cancelled successfully"));
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // Request DTO - accepts String dates for maximum flexibility
+    // DTO
     static class BookingRequest {
-        private UUID userId;
-        private UUID vehicleId;
-        private UUID driverId;
+        private String userId;
+        private String vehicleId;
+        private String driverId;
         private String startDate;
         private String endDate;
         private BigDecimal totalAmount;
+        private String pickupLocation;
+        private String dropLocation;
+        private String contactPhone;
 
-        // Getters and setters
-        public UUID getUserId() {
+        public String getUserId() {
             return userId;
         }
 
-        public void setUserId(UUID userId) {
+        public void setUserId(String userId) {
             this.userId = userId;
         }
 
-        public UUID getVehicleId() {
+        public String getVehicleId() {
             return vehicleId;
         }
 
-        public void setVehicleId(UUID vehicleId) {
+        public void setVehicleId(String vehicleId) {
             this.vehicleId = vehicleId;
         }
 
-        public UUID getDriverId() {
+        public String getDriverId() {
             return driverId;
         }
 
-        public void setDriverId(UUID driverId) {
+        public void setDriverId(String driverId) {
             this.driverId = driverId;
         }
 
@@ -228,6 +222,30 @@ public class BookingController {
 
         public void setTotalAmount(BigDecimal totalAmount) {
             this.totalAmount = totalAmount;
+        }
+
+        public String getPickupLocation() {
+            return pickupLocation;
+        }
+
+        public void setPickupLocation(String pickupLocation) {
+            this.pickupLocation = pickupLocation;
+        }
+
+        public String getDropLocation() {
+            return dropLocation;
+        }
+
+        public void setDropLocation(String dropLocation) {
+            this.dropLocation = dropLocation;
+        }
+
+        public String getContactPhone() {
+            return contactPhone;
+        }
+
+        public void setContactPhone(String contactPhone) {
+            this.contactPhone = contactPhone;
         }
     }
 }

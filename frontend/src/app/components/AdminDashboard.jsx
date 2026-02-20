@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { LayoutDashboard, Calendar, ClipboardCheck, Tag, Plus, CheckCircle, XCircle, Settings, Camera, Clock, User, Car, ShieldCheck } from 'lucide-react';
 import CancelRideDialog from './CancelRideDialog';
 import DriverProfileDialog from './booking-steps/DriverProfileDialog';
@@ -17,7 +18,15 @@ const AdminDashboard = ({ onNavigate, onAddVehicle, onDeleteVehicle, onUpdateVeh
     }, [initialBookings]);
 
     const totalRevenue = bookings.reduce((sum, booking) => {
-        const cost = parseInt(booking.cost.replace(/[^0-9]/g, '') || 0);
+        // Support both backend format (totalAmount number) and legacy format (cost string like '₹1200')
+        let cost = 0;
+        if (typeof booking.totalAmount === 'number') {
+            cost = booking.totalAmount;
+        } else if (typeof booking.cost === 'string') {
+            cost = parseInt(booking.cost.replace(/[^0-9]/g, '') || '0');
+        } else if (typeof booking.cost === 'number') {
+            cost = booking.cost;
+        }
         return sum + cost;
     }, 0);
 
@@ -76,7 +85,7 @@ const AdminDashboard = ({ onNavigate, onAddVehicle, onDeleteVehicle, onUpdateVeh
 
         if (editMode) {
             onUpdateVehicle({ ...vehicleData, id: editingId });
-            alert('Vehicle updated successfully!');
+            toast.success('Vehicle updated successfully!');
             setEditMode(false);
             setEditingId(null);
         } else {
@@ -84,7 +93,7 @@ const AdminDashboard = ({ onNavigate, onAddVehicle, onDeleteVehicle, onUpdateVeh
                 ...vehicleData,
                 id: Date.now(),
             });
-            alert('Vehicle added to fleet successfully!');
+            toast.success('Vehicle added to fleet successfully!');
         }
 
         setNewVehicle({
@@ -120,6 +129,7 @@ const AdminDashboard = ({ onNavigate, onAddVehicle, onDeleteVehicle, onUpdateVeh
 
 
     const [activeTab, setActiveTab] = useState('overview');
+    const [isFetchingReports, setIsFetchingReports] = useState(false);
 
 
     const [hostRequests, setHostRequests] = useState([]);
@@ -132,38 +142,37 @@ const AdminDashboard = ({ onNavigate, onAddVehicle, onDeleteVehicle, onUpdateVeh
     // Actually, I need to add the import statement at the top first. 
     // This chunk replaces the state and useEffect logic.
 
+    const fetchDamageReports = async () => {
+        setIsFetchingReports(true);
+        try {
+            const reports = await getAllDamageReports();
+            setDamageReports(reports);
+        } catch (error) {
+            console.error('Failed to fetch damage reports:', error);
+        } finally {
+            setIsFetchingReports(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchReports = async () => {
-            try {
-                // Import dynamically if not present, or assume imported. 
-                // Better to rely on module imports.
-                // Assuming getAllDamageReports is imported.
-                // Note: I will add the import in a separate `replace_file_content` or `multi_replace`.
-                // For now, I'll use the functions from props or global if available, but standard is import.
-                // Let's assume I'll add `import { getAllDamageReports, updateDamageReportStatus } from '../../api/damageReports';` at the top.
-
-                // Fetch host requests (keep existing logic or update if API exists)
-                const storedRequests = JSON.parse(localStorage.getItem('hostRequests') || '[]');
-                setHostRequests(storedRequests);
-
-                // Fetch Damage Reports from API
-                const reports = await getAllDamageReports();
-                setDamageReports(reports);
-            } catch (error) {
-                console.error("Failed to fetch damage reports", error);
-                // Fallback to local storage for demo/if API fails
-                const storedReports = JSON.parse(localStorage.getItem('damageReports') || '[]');
-                setDamageReports(storedReports);
-            }
-        };
-
-        fetchReports();
+        const storedRequests = JSON.parse(localStorage.getItem('hostRequests') || '[]');
+        setHostRequests(storedRequests);
 
         const storedDocs = JSON.parse(localStorage.getItem('userDocuments') || 'null');
         if (storedDocs) {
             setUserVerificationDocs(storedDocs);
         }
+
+        // Fetch reports on mount
+        fetchDamageReports();
     }, []);
+
+    // Refresh damage reports when inspections tab is opened
+    useEffect(() => {
+        if (activeTab === 'inspections') {
+            fetchDamageReports();
+        }
+    }, [activeTab]);
 
     const [userVerificationDocs, setUserVerificationDocs] = useState(null);
 
@@ -192,31 +201,49 @@ const AdminDashboard = ({ onNavigate, onAddVehicle, onDeleteVehicle, onUpdateVeh
         if (!cost) return;
 
         try {
+            // Convert cost to a number — backend expects BigDecimal, not string
+            const numericCost = parseFloat(cost);
+            if (isNaN(numericCost) || numericCost <= 0) {
+                alert('Please enter a valid cost amount.');
+                return;
+            }
+
             // Update via API
             const updatedReport = await updateDamageReportStatus(id, {
-                estimatedCost: cost,
+                estimatedCost: numericCost,
                 status: 'ESTIMATED'
             });
 
             // Update local state
             setDamageReports(prev => prev.map(report =>
-                report.id === id ? updatedReport : report
+                report.id === id ? { ...report, estimatedCost: numericCost, status: 'ESTIMATED' } : report
             ));
 
-            // Notify User (keep existing logic or move to backend)
-            if (updatedReport) {
-                addNotification(updatedReport.reportedBy?.id || 'all', 'damage_estimate', `Cost estimate of ₹${cost} received for your Damage Report.`);
-            }
+            // Store estimate in localStorage so user's Dashboard can pick it up
+            const reportEntry = {
+                id,
+                estimatedCost: numericCost,
+                userId: updatedReport?.reportedById || updatedReport?.reportedBy?.id || '',
+                timestamp: new Date().toISOString()
+            };
+            const existing = JSON.parse(localStorage.getItem('pendingDamagePayments') || '[]');
+            const updated = existing.filter(e => e.id !== id);
+            updated.push(reportEntry);
+            localStorage.setItem('pendingDamagePayments', JSON.stringify(updated));
+
+            // Notify User via localStorage notifications
+            const userId = updatedReport?.reportedById || updatedReport?.reportedBy?.id || 'all';
+            addNotification(userId, 'damage_estimate', `A cost estimate of ₹${numericCost.toLocaleString()} has been set for your damage report. Please pay via your Dashboard → My Reports.`);
 
             setCostInputs(prev => {
                 const next = { ...prev };
                 delete next[id];
                 return next;
             });
-            alert('Cost estimate updated successfully!');
+            toast.success(`Estimate of ₹${numericCost.toLocaleString()} sent! The user can now see it and pay from their Dashboard.`);
         } catch (error) {
             console.error("Failed to update damage report cost", error);
-            alert('Failed to update cost. Please try again.');
+            toast.error('Failed to send estimate. Please try again.');
         }
     };
 
@@ -278,6 +305,23 @@ const AdminDashboard = ({ onNavigate, onAddVehicle, onDeleteVehicle, onUpdateVeh
     const [viewingLicenseUrl, setViewingLicenseUrl] = useState('');
     const [viewingDriverName, setViewingDriverName] = useState('');
 
+
+    // Cancel a booking (update local state)
+    const handleConfirmCancel = (bookingId) => {
+        setBookings(prev => prev.map(b =>
+            b.id === bookingId ? { ...b, status: 'Cancelled' } : b
+        ));
+    };
+
+    // Approve/reject host vehicle listing requests
+    const updateHostRequestStatus = (requestId, newStatus) => {
+        setHostRequests(prev => prev.map(r =>
+            r.id === requestId ? { ...r, status: newStatus } : r
+        ));
+        const storedRequests = JSON.parse(localStorage.getItem('hostRequests') || '[]');
+        const updated = storedRequests.map(r => r.id === requestId ? { ...r, status: newStatus } : r);
+        localStorage.setItem('hostRequests', JSON.stringify(updated));
+    };
 
     const handleCancelClick = (bookingId) => {
         if (window.confirm("Are you sure you want to cancel this booking? This action cannot be undone.")) {
@@ -784,21 +828,38 @@ const AdminDashboard = ({ onNavigate, onAddVehicle, onDeleteVehicle, onUpdateVeh
 
                             {activeTab === 'inspections' && (
                                 <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
-                                    <h3 className="text-xl font-bold text-white mb-4">Damage Reports & Inspections</h3>
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h3 className="text-xl font-bold text-white">Damage Reports & Inspections</h3>
+                                        <button
+                                            onClick={fetchDamageReports}
+                                            disabled={isFetchingReports}
+                                            className="px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors text-sm font-bold flex items-center gap-2"
+                                        >
+                                            {isFetchingReports ? '⏳ Loading...' : '🔄 Refresh'}
+                                        </button>
+                                    </div>
 
                                     <div className="space-y-4 mb-8">
-                                        <h4 className="text-lg font-semibold text-gray-300 mb-2">User Reported Damages</h4>
-                                        {damageReports.length === 0 ? (
-                                            <p className="text-gray-500">No user reports found.</p>
+                                        <h4 className="text-lg font-semibold text-gray-300 mb-2">User Reported Damages ({damageReports.length})</h4>
+                                        {isFetchingReports ? (
+                                            <div className="text-gray-400 text-center py-10">Loading damage reports...</div>
+                                        ) : damageReports.length === 0 ? (
+                                            <p className="text-gray-500 text-center py-10">No damage reports found. Reports submitted by users will appear here.</p>
                                         ) : (
                                             damageReports.map((report) => (
                                                 <div key={report.id} className="bg-card/50 border border-white/5 rounded-2xl p-6 hover:border-primary/20 transition-all">
                                                     <div className="flex justify-between items-start mb-4">
                                                         <div>
-                                                            <h4 className="font-bold text-white text-lg">Report #{report.id}</h4>
-                                                            <p className="text-xs text-gray-500">User: {report.userName} ({report.userId}) • {new Date(report.submittedAt).toLocaleDateString()}</p>
+                                                            <h4 className="font-bold text-white text-lg">Report #{report.id.slice(0, 8)}</h4>
+                                                            <p className="text-xs text-gray-500">
+                                                                User: {report.reportedByName || report.reportedBy?.fullName || "Unknown"} • {report.createdAt ? new Date(report.createdAt).toLocaleDateString() : 'N/A'}
+                                                            </p>
+                                                            <p className="text-xs text-primary mt-1 font-medium">Vehicle: {report.vehicleName || report.vehicle?.name || "N/A"}</p>
                                                         </div>
-                                                        <span className={`text-xs px-3 py-1 rounded-full font-bold uppercase ${report.status === 'Estimated' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
+                                                        <span className={`text-xs px-3 py-1 rounded-full font-bold uppercase ${report.status === 'PAID' ? 'bg-green-500/20 text-green-400' :
+                                                            report.status === 'ESTIMATED' ? 'bg-cyan-500/20 text-cyan-400' :
+                                                                'bg-yellow-500/20 text-yellow-400'
+                                                            }`}>
                                                             {report.status}
                                                         </span>
                                                     </div>
@@ -806,25 +867,24 @@ const AdminDashboard = ({ onNavigate, onAddVehicle, onDeleteVehicle, onUpdateVeh
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
                                                         <div>
                                                             <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Details</p>
-                                                            <p className="text-gray-300 text-sm"><span className="text-gray-500">Location:</span> {report.location}</p>
                                                             <p className="text-gray-300 text-sm"><span className="text-gray-500">Severity:</span> {report.severity}</p>
-                                                            <p className="text-gray-300 text-sm mt-2 p-2 bg-white/5 rounded text-italic">"{report.description}"</p>
+                                                            <p className="text-gray-300 text-sm mt-2 p-3 bg-white/5 rounded-xl italic">"{report.description}"</p>
                                                         </div>
                                                         <div>
                                                             <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Evidence</p>
-                                                            {report.vehiclePhotos && report.vehiclePhotos.length > 0 ? (
+                                                            {report.images && report.images.length > 0 ? (
                                                                 <div className="flex gap-2 overflow-x-auto pb-2">
-                                                                    {report.vehiclePhotos.map((photo, idx) => (
+                                                                    {report.images.map((photo, idx) => (
                                                                         <img key={idx} src={photo} alt="damage" className="h-24 w-24 object-cover rounded-lg border border-white/10" />
                                                                     ))}
                                                                 </div>
                                                             ) : (
-                                                                <span className="text-gray-500 text-sm">No photos uploaded</span>
+                                                                <span className="text-gray-500 text-sm italic">No photos uploaded</span>
                                                             )}
                                                         </div>
                                                     </div>
 
-                                                    {report.status === 'Pending' ? (
+                                                    {(report.status === 'OPEN' || report.status === 'INVESTIGATING' || !report.estimatedCost) ? (
                                                         <div className="flex items-end gap-3 pt-4 border-t border-white/5 bg-secondary/10 p-4 rounded-xl">
                                                             <div className="flex-1">
                                                                 <label className="text-xs text-gray-400 mb-1 block">Cost Estimation (₹)</label>
@@ -846,7 +906,12 @@ const AdminDashboard = ({ onNavigate, onAddVehicle, onDeleteVehicle, onUpdateVeh
                                                     ) : (
                                                         <div className="pt-4 border-t border-white/5 flex justify-between items-center">
                                                             <span className="text-gray-400 text-sm">Estimated Cost Sent</span>
-                                                            <span className="text-xl font-bold text-orange-400">₹{report.estimatedCost}</span>
+                                                            <div className="text-right">
+                                                                <span className="text-xl font-bold text-orange-400 block">₹{report.estimatedCost}</span>
+                                                                {report.razorpayPaymentId && (
+                                                                    <span className="text-[10px] text-green-500 font-mono">Ref: {report.razorpayPaymentId}</span>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     )}
                                                 </div>

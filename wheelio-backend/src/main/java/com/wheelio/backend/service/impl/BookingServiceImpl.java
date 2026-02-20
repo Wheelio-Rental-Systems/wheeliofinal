@@ -5,32 +5,23 @@ import com.wheelio.backend.repository.BookingRepository;
 import com.wheelio.backend.service.BookingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Service
-@Transactional
 public class BookingServiceImpl implements BookingService {
 
-    private final BookingRepository bookingRepository;
-
     @Autowired
-    public BookingServiceImpl(BookingRepository bookingRepository) {
-        this.bookingRepository = bookingRepository;
-    }
+    private BookingRepository bookingRepository;
 
     @Override
     public Booking createBooking(Booking booking) {
-        booking.setCreatedAt(LocalDateTime.now());
         return bookingRepository.save(booking);
     }
 
     @Override
-    public Optional<Booking> getBookingById(UUID id) {
+    public Optional<Booking> getBookingById(String id) {
         return bookingRepository.findById(id);
     }
 
@@ -40,23 +31,18 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
-    public List<Booking> getBookingsByUserId(UUID userId) {
-        return bookingRepository.findByUserId(userId);
+    public List<Booking> getBookingsByUserId(String userId) {
+        return bookingRepository.findByUserIdOrderByCreatedAtDesc(userId);
     }
 
     @Override
-    public List<Booking> getBookingsByVehicleId(UUID vehicleId) {
+    public List<Booking> getBookingsByVehicleId(String vehicleId) {
         return bookingRepository.findByVehicleId(vehicleId);
     }
 
     @Override
-    public List<Booking> getBookingsByDriverId(UUID driverId) {
-        return bookingRepository.findByDriverId(driverId);
-    }
-
-    @Override
-    public List<Booking> getBookingsByStatus(Booking.BookingStatus status) {
-        return bookingRepository.findByStatus(status);
+    public List<Booking> getBookingsByDriverId(String driverId) {
+        return bookingRepository.findByDriverIdOrderByCreatedAtDesc(driverId);
     }
 
     @Override
@@ -65,7 +51,7 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
-    public void deleteBooking(UUID id) {
+    public void deleteBooking(String id) {
         bookingRepository.deleteById(id);
     }
 }

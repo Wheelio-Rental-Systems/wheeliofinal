@@ -262,6 +262,25 @@ const BookingForm = ({ vehicle, bookingData, onBack, onConfirm }) => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
+
+        // Validate required fields before opening Razorpay
+        if (!formData.startDate || !formData.endDate) {
+            toast.error('Please select your pick-up and return dates.');
+            return;
+        }
+        if (!formData.startTime || !formData.dropTime) {
+            toast.error('Please select pick-up and drop-off times.');
+            return;
+        }
+        if (!formData.name || !formData.email || !formData.phone) {
+            toast.error('Please fill in your personal details (name, email, phone).');
+            return;
+        }
+        if (costBreakdown.total <= 0) {
+            toast.error('Total amount is ₹0. Please select valid dates.');
+            return;
+        }
+
         handleRazorpayPayment();
     };
 

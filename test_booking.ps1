@@ -13,7 +13,7 @@ $body = @{
 } | ConvertTo-Json
 
 try {
-    $response = Invoke-RestMethod -Uri "http://localhost:8072/api/bookings" -Method Post -Headers $headers -Body $body -ErrorAction Stop
+    $response = Invoke-RestMethod -Uri "http://localhost:8073/api/bookings" -Method Post -Headers $headers -Body $body -ErrorAction Stop
     Write-Host "Success: $($response | ConvertTo-Json -Depth 5)"
 }
 catch {

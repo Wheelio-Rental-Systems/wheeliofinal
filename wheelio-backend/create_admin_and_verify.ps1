@@ -1,5 +1,5 @@
 $ErrorActionPreference = "Stop"
-$baseUrl = "http://localhost:8072/api"
+$baseUrl = "http://localhost:8073/api"
 
 # 1. Register a fresh user to act as admin/verifier
 $email = "verifier@example.com"

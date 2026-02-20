@@ -28,14 +28,12 @@ public class AuthController {
 
     @PostMapping("/signup")
     public ResponseEntity<?> signup(@RequestBody SignupRequest request) {
-        // Check if user already exists
         if (userService.existsByEmail(request.getEmail())) {
             Map<String, String> error = new HashMap<>();
             error.put("error", "Email already registered");
             return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
         }
 
-        // Create new user with hashed password
         User user = new User();
         user.setEmail(request.getEmail());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
@@ -46,48 +44,31 @@ public class AuthController {
 
         User savedUser = userService.createUser(user);
 
-        // Generate token
-        String token = jwtUtil.generateToken(
-                savedUser.getEmail(),
-                savedUser.getId().toString(),
-                savedUser.getRole().toString());
+        String token = jwtUtil.generateToken(savedUser.getEmail(), savedUser.getId(), savedUser.getRole().toString());
 
         Map<String, Object> response = new HashMap<>();
         response.put("token", token);
         response.put("user", createUserResponse(savedUser));
-
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
         Optional<User> userOpt = userService.getUserByEmail(request.getEmail());
-
         if (userOpt.isEmpty()) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Invalid credentials");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid credentials"));
         }
 
         User user = userOpt.get();
-
-        // BCrypt password verification
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Invalid credentials");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid credentials"));
         }
 
-        // Generate token
-        String token = jwtUtil.generateToken(
-                user.getEmail(),
-                user.getId().toString(),
-                user.getRole().toString());
+        String token = jwtUtil.generateToken(user.getEmail(), user.getId(), user.getRole().toString());
 
         Map<String, Object> response = new HashMap<>();
         response.put("token", token);
         response.put("user", createUserResponse(user));
-
         return ResponseEntity.ok(response);
     }
 
@@ -96,19 +77,40 @@ public class AuthController {
         try {
             String token = authHeader.replace("Bearer ", "");
             String email = jwtUtil.extractEmail(token);
-
             Optional<User> userOpt = userService.getUserByEmail(email);
             if (userOpt.isEmpty()) {
-                Map<String, String> error = new HashMap<>();
-                error.put("error", "User not found");
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "User not found"));
             }
-
             return ResponseEntity.ok(createUserResponse(userOpt.get()));
         } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Invalid token");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid token"));
+        }
+    }
+
+    @PutMapping("/update-profile")
+    public ResponseEntity<?> updateProfile(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody Map<String, String> request) {
+        try {
+            String token = authHeader.replace("Bearer ", "");
+            String email = jwtUtil.extractEmail(token);
+            Optional<User> userOpt = userService.getUserByEmail(email);
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "User not found"));
+            }
+            User user = userOpt.get();
+            if (request.containsKey("fullName"))
+                user.setFullName(request.get("fullName"));
+            if (request.containsKey("phone"))
+                user.setPhone(request.get("phone"));
+            if (request.containsKey("city"))
+                user.setCity(request.get("city"));
+            if (request.containsKey("avatarUrl"))
+                user.setAvatarUrl(request.get("avatarUrl"));
+            User updated = userService.updateUser(user);
+            return ResponseEntity.ok(createUserResponse(updated));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", e.getMessage()));
         }
     }
 
@@ -150,7 +152,7 @@ public class AuthController {
         return userMap;
     }
 
-    // Request DTOs
+    // DTOs
     static class SignupRequest {
         private String email;
         private String password;

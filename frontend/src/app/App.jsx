@@ -10,7 +10,6 @@ import { About, Testimonials, Careers, HelpCenter, Terms, Privacy, Contact } fro
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import { DamageReport } from './components/DamageReport';
-import { EmergencyButton } from './components/EmergencyButton';
 import { SupportDialog } from './components/SupportDialog';
 import HostVehicleForm from './components/HostVehicleForm';
 import AdminLogin from './components/AdminLogin';
@@ -25,7 +24,6 @@ import { vehicles as staticVehicles } from './data/vehicles';
 import * as authAPI from '../api/auth';
 import * as vehiclesAPI from '../api/vehicles';
 import * as bookingsAPI from '../api/bookings';
-import { getUserBookings } from '../api/bookings';
 import { getUser, clearAuth } from '../api/config';
 
 const App = () => {
@@ -36,6 +34,7 @@ const App = () => {
   const [user, setUser] = useState(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [vehiclesLoading, setVehiclesLoading] = useState(false);
+  const [dashboardTab, setDashboardTab] = useState('overview');
 
   const [allVehicles, setAllVehicles] = useState([]);
 
@@ -104,8 +103,18 @@ const App = () => {
           const bookings = await bookingsAPI.getUserBookings(user.id);
           // Map backend bookings to frontend format
           const formattedBookings = bookings.map(b => {
-            // Merge vehicle image from static data (backend has imageUrl, frontend uses image)
-            let vehicle = b.vehicle || { name: 'Unknown Vehicle' };
+            // Backend stores vehicle info under vehicleSummary (embedded denormalized snapshot)
+            const vs = b.vehicleSummary || b.vehicle || {};
+            let vehicle = {
+              id: vs.vehicleId || vs.id || b.vehicleId,
+              name: vs.name || 'Unknown Vehicle',
+              brand: vs.brand || '',
+              type: vs.type || '',
+              imageUrl: vs.imageUrl || '',
+              location: vs.location || '',
+              price: vs.pricePerDay || 0,
+            };
+            // Try to enrich with static frontend data (better images, more details)
             const staticMatch = staticVehicles.find(sv => sv.name === vehicle.name);
             if (staticMatch) {
               vehicle = { ...vehicle, image: staticMatch.image, ...(!vehicle.location && { location: staticMatch.location }) };
@@ -182,12 +191,35 @@ const App = () => {
       }
     };
 
-    fetchVehicles();
+    // Also fetch all bookings for admins
+    const fetchAllBookings = async () => {
+      if (user?.role === 'admin') {
+        try {
+          const bookings = await bookingsAPI.getAllBookings();
+          setAllBookings(bookings.map(b => {
+            // Backend stores vehicle info in vehicleSummary (denormalized snapshot)
+            const vs = b.vehicleSummary || b.vehicle || {};
+            return {
+              ...b,
+              vehicleName: vs.name || b.vehicleId || 'Unknown',
+              // Backend stores denormalized userName field directly on booking
+              userName: b.userName || b.user?.fullName || b.user?.email || 'Unknown User',
+              cost: '₹' + (b.totalAmount || 0),
+              date: b.startDate ? (new Date(b.startDate).toLocaleDateString() + ' to ' + new Date(b.endDate).toLocaleDateString()) : 'Dates N/A'
+            };
+          }));
+        } catch (error) {
+          console.error("Failed to fetch all bookings for admin:", error);
+        }
+      } else {
+        const storedBookings = JSON.parse(localStorage.getItem('allBookings') || '[]');
+        setAllBookings(storedBookings);
+      }
+    };
 
-    // Also fetch bookings from localStorage for now
-    const storedBookings = JSON.parse(localStorage.getItem('allBookings') || '[]');
-    setAllBookings(storedBookings);
-  }, []);
+    fetchVehicles();
+    fetchAllBookings();
+  }, [user]);
 
   const handleAddVehicle = async (newVehicle) => {
     try {
@@ -278,7 +310,27 @@ const App = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Accept both standard UUIDs and MongoDB ObjectIds (24-char hex)
+  const isValidId = (str) => {
+    if (!str) return false;
+    const s = str.toString();
+    return /^[0-9a-f]{24}$/i.test(s) || // MongoDB ObjectId
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s); // UUID
+  };
+
   const confirmBooking = async (bookingData) => {
+    // Guard: must be logged in with a real backend user ID
+    if (!user || !isValidId(user.id)) {
+      toast.error('Please log out and log back in before booking.');
+      return;
+    }
+
+    // Guard: vehicle must have a real backend ID
+    if (!bookingData.vehicle || !isValidId(bookingData.vehicle.id)) {
+      toast.error('Vehicle data is not ready yet. Please wait a moment and try again — the server may still be loading.');
+      return;
+    }
+
     try {
       // Build ISO date strings with seconds
       const buildDate = (date, time) => {
@@ -293,9 +345,9 @@ const App = () => {
       const startDateStr = buildDate(bookingData.startDate, bookingData.startTime);
       const endDateStr = buildDate(bookingData.endDate, bookingData.dropTime);
 
-      // Only send driverId if it's a valid UUID-like string
+      // Send driverId if it's a valid format (UUID or MongoDB ObjectId)
       let driverId = null;
-      if (bookingData.driver?.id && typeof bookingData.driver.id === 'string' && bookingData.driver.id.includes('-')) {
+      if (bookingData.driver?.id && isValidId(bookingData.driver.id)) {
         driverId = bookingData.driver.id;
       }
 
@@ -306,7 +358,10 @@ const App = () => {
         driverId: driverId,
         startDate: startDateStr,
         endDate: endDateStr,
-        totalAmount: bookingData.totalAmount || parseFloat((bookingData.vehicle.price * 1.05 + 96).toFixed(2))
+        totalAmount: bookingData.totalAmount || parseFloat((bookingData.vehicle.price * 1.05 + 96).toFixed(2)),
+        pickupLocation: bookingData.vehicle?.location || 'Coimbatore', // Default pickup from vehicle location
+        dropLocation: bookingData.dropLocation,
+        contactPhone: bookingData.phone
       };
 
       console.log('Sending booking payload:', bookingPayload);
@@ -330,6 +385,7 @@ const App = () => {
 
       toast.success('Booking confirmed successfully!');
       setSelectedVehicle(null);
+      setDashboardTab('bookings'); // Open bookings tab after successful booking
       handleNavigate('dashboard');
     } catch (error) {
       console.error('Error creating booking:', error);
@@ -354,8 +410,28 @@ const App = () => {
     toast.success("Booking updated successfully!");
   };
 
-  const handleCancelBooking = (bookingId) => {
-    setUserBookings(prev => prev.filter(b => b.id !== bookingId));
+  const handleCancelBooking = async (bookingId) => {
+    try {
+      await bookingsAPI.cancelBooking(bookingId);
+
+      // Update User Bookings
+      const updatedUserBookings = userBookings.map(b =>
+        b.id === bookingId ? { ...b, status: 'CANCELLED' } : b
+      );
+      setUserBookings(updatedUserBookings);
+
+      // Update All Bookings and Persist
+      const updatedAllBookings = allBookings.map(b =>
+        b.id === bookingId ? { ...b, status: 'CANCELLED' } : b
+      );
+      setAllBookings(updatedAllBookings);
+      localStorage.setItem('allBookings', JSON.stringify(updatedAllBookings));
+
+      toast.success("Ride cancelled successfully.");
+    } catch (error) {
+      console.error("Error cancelling booking:", error);
+      toast.error("Failed to cancel ride. Please try again.");
+    }
   };
 
   const handleEmergency = () => {
@@ -423,7 +499,7 @@ const App = () => {
 
   return (
     <div className="min-h-screen text-foreground selection:bg-primary/30 font-sans">
-      <Toaster position="top-right" theme="dark" />
+      <Toaster position="bottom-right" theme="dark" duration={2500} />
       <Antigravity
         count={150}
         detectRetina={true}
@@ -467,7 +543,7 @@ const App = () => {
           )}
 
           {currentView === 'damage-report' && (
-            <DamageReport />
+            <DamageReport onNavigate={handleNavigate} userBookings={userBookings} allVehicles={allVehicles} />
           )}
 
           {currentView === 'about' && <About />}
@@ -478,7 +554,7 @@ const App = () => {
           {currentView === 'privacy' && <Privacy />}
           {currentView === 'contact' && <Contact />}
           {currentView === 'login' && <Login onNavigate={handleNavigate} onLogin={handleLogin} />}
-          {currentView === 'dashboard' && <Dashboard onNavigate={handleNavigate} bookings={userBookings} user={user} onUpdateUser={handleUpdateUser} onUpdateBooking={handleUpdateBooking} onCancelBooking={handleCancelBooking} onReview={handleReviewSubmit} onLogout={handleLogout} />}
+          {currentView === 'dashboard' && <Dashboard onNavigate={handleNavigate} bookings={userBookings} user={user} onUpdateUser={handleUpdateUser} onUpdateBooking={handleUpdateBooking} onCancelBooking={handleCancelBooking} onReview={handleReviewSubmit} onLogout={handleLogout} initialTab={dashboardTab} onTabChange={setDashboardTab} />}
 
           {currentView === 'admin-login' && <AdminLogin onNavigate={handleNavigate} onLogin={handleLogin} />}
           {currentView === 'admin-dashboard' && <AdminDashboard onNavigate={handleNavigate} vehicles={allVehicles} bookings={allBookings} onAddVehicle={handleAddVehicle} onDeleteVehicle={handleDeleteVehicle} onUpdateVehicle={handleUpdateVehicle} onLogout={handleLogout} />}
@@ -488,7 +564,7 @@ const App = () => {
 
         </main>
 
-        <EmergencyButton onClick={handleEmergency} />
+
 
         <SupportDialog
           open={isSupportOpen}

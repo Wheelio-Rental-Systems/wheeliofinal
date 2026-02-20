@@ -8,14 +8,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/damage-reports")
-
 public class DamageReportController {
 
     @Autowired
@@ -33,77 +31,91 @@ public class DamageReportController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<DamageReport> getReportById(@PathVariable UUID id) {
+    public ResponseEntity<DamageReport> getReportById(@PathVariable String id) {
         return damageReportService.getDamageReportById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/vehicle/{vehicleId}")
-    public List<DamageReport> getReportsByVehicle(@PathVariable UUID vehicleId) {
+    public List<DamageReport> getReportsByVehicle(@PathVariable String vehicleId) {
         return damageReportService.getDamageReportsByVehicleId(vehicleId);
     }
 
     @GetMapping("/status/{status}")
     public List<DamageReport> getReportsByStatus(@PathVariable String status) {
-        return damageReportService.getDamageReportsByStatus(DamageReport.DamageStatus.valueOf(status.toUpperCase()));
+        return damageReportService.getDamageReportsByStatus(
+                DamageReport.DamageStatus.valueOf(status.toUpperCase()));
     }
 
     @GetMapping("/user/{userId}")
-    public List<DamageReport> getReportsByUser(@PathVariable UUID userId) {
+    public List<DamageReport> getReportsByUser(@PathVariable String userId) {
         return damageReportService.getDamageReportsByUserId(userId);
     }
 
     @PostMapping
     public ResponseEntity<?> createReport(@RequestBody DamageReportRequest request) {
         try {
+            var vehicleOpt = vehicleService.getVehicleById(request.getVehicleId());
+            var userOpt = userService.getUserById(request.getReportedById());
+
+            if (vehicleOpt.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Vehicle not found"));
+            }
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
+            }
+
             DamageReport report = new DamageReport();
-            report.setVehicle(vehicleService.getVehicleById(request.getVehicleId()).orElseThrow());
-            report.setReportedBy(userService.getUserById(request.getReportedById()).orElseThrow());
+            report.setVehicleId(request.getVehicleId());
+            report.setVehicleName(vehicleOpt.get().getName() + " " + vehicleOpt.get().getBrand());
+            report.setReportedById(request.getReportedById());
+            report.setReportedByName(userOpt.get().getFullName());
             report.setDescription(request.getDescription());
             report.setImages(request.getImages());
-            report.setSeverity(
-                    request.getSeverity() != null ? DamageReport.Severity.valueOf(request.getSeverity().toUpperCase())
-                            : null);
+            report.setSeverity(request.getSeverity() != null
+                    ? DamageReport.Severity.valueOf(request.getSeverity().toUpperCase())
+                    : null);
             report.setStatus(DamageReport.DamageStatus.OPEN);
             if (request.getEstimatedCost() != null) {
                 report.setEstimatedCost(request.getEstimatedCost());
                 report.setStatus(DamageReport.DamageStatus.ESTIMATED);
             }
 
-            DamageReport savedReport = damageReportService.createDamageReport(report);
-            return ResponseEntity.ok(savedReport);
+            return ResponseEntity.ok(damageReportService.createDamageReport(report));
         } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Failed to create damage report: " + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Failed to create damage report: " + e.getMessage()));
         }
     }
 
     @PutMapping("/{id}/status")
-    public ResponseEntity<?> updateReportStatus(
-            @PathVariable UUID id,
-            @RequestBody Map<String, String> request) {
-        return damageReportService.getDamageReportById(id)
-                .map(report -> {
-                    if (request.containsKey("status")) {
-                        report.setStatus(DamageReport.DamageStatus.valueOf(request.get("status").toUpperCase()));
-                    }
-                    if (request.containsKey("severity")) {
-                        report.setSeverity(DamageReport.Severity.valueOf(request.get("severity").toUpperCase()));
-                    }
-                    if (request.containsKey("estimatedCost")) {
-                        report.setEstimatedCost(new java.math.BigDecimal(request.get("estimatedCost")));
-                    }
-                    return ResponseEntity.ok(damageReportService.updateDamageReport(report));
-                })
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<?> updateReportStatus(@PathVariable String id, @RequestBody Map<String, Object> request) {
+        try {
+            return damageReportService.getDamageReportById(id)
+                    .map(report -> {
+                        if (request.containsKey("status") && request.get("status") != null) {
+                            report.setStatus(DamageReport.DamageStatus.valueOf(
+                                    ((String) request.get("status")).toUpperCase()));
+                        }
+                        if (request.containsKey("severity") && request.get("severity") != null) {
+                            report.setSeverity(DamageReport.Severity.valueOf(
+                                    ((String) request.get("severity")).toUpperCase()));
+                        }
+                        if (request.containsKey("estimatedCost") && request.get("estimatedCost") != null) {
+                            report.setEstimatedCost(new BigDecimal(request.get("estimatedCost").toString()));
+                        }
+                        return ResponseEntity.ok(damageReportService.updateDamageReport(report));
+                    })
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", e.getMessage(), "type", e.getClass().getName()));
+        }
     }
 
     @PutMapping("/{id}/pay")
-    public ResponseEntity<?> markReportAsPaid(
-            @PathVariable UUID id,
-            @RequestBody Map<String, String> request) {
+    public ResponseEntity<?> markReportAsPaid(@PathVariable String id, @RequestBody Map<String, String> request) {
         return damageReportService.getDamageReportById(id)
                 .map(report -> {
                     report.setStatus(DamageReport.DamageStatus.PAID);
@@ -111,37 +123,33 @@ public class DamageReportController {
                         report.setRazorpayPaymentId(request.get("razorpayPaymentId"));
                     }
                     DamageReport updated = damageReportService.updateDamageReport(report);
-                    Map<String, Object> response = new HashMap<>();
-                    response.put("message", "Payment recorded successfully");
-                    response.put("report", updated);
-                    return ResponseEntity.ok(response);
+                    return ResponseEntity.ok(Map.of("message", "Payment recorded", "report", updated));
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // Request DTO
+    // DTO
     static class DamageReportRequest {
-        private UUID vehicleId;
-        private UUID reportedById;
+        private String vehicleId;
+        private String reportedById;
         private String description;
         private List<String> images;
         private String severity;
-        private java.math.BigDecimal estimatedCost;
+        private BigDecimal estimatedCost;
 
-        // Getters and setters
-        public UUID getVehicleId() {
+        public String getVehicleId() {
             return vehicleId;
         }
 
-        public void setVehicleId(UUID vehicleId) {
+        public void setVehicleId(String vehicleId) {
             this.vehicleId = vehicleId;
         }
 
-        public UUID getReportedById() {
+        public String getReportedById() {
             return reportedById;
         }
 
-        public void setReportedById(UUID reportedById) {
+        public void setReportedById(String reportedById) {
             this.reportedById = reportedById;
         }
 
@@ -169,11 +177,11 @@ public class DamageReportController {
             this.severity = severity;
         }
 
-        public java.math.BigDecimal getEstimatedCost() {
+        public BigDecimal getEstimatedCost() {
             return estimatedCost;
         }
 
-        public void setEstimatedCost(java.math.BigDecimal estimatedCost) {
+        public void setEstimatedCost(BigDecimal estimatedCost) {
             this.estimatedCost = estimatedCost;
         }
     }

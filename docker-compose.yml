@@ -24,7 +24,7 @@ services:
       dockerfile: Dockerfile
     container_name: wheelio-backend
     ports:
-      - "8072:8072"
+      - "8073:8073"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/wheelio_db
       SPRING_DATASOURCE_USERNAME: postgres
@@ -32,11 +32,25 @@ services:
       SPRING_GPA_HIBERNATE_DDL_AUTO: update
       JWT_SECRET: wheelio_super_secret_key_for_jwt_token_generation_2024_very_long_key
       JWT_EXPIRATION: 86400000
+      MONGO_URI: mongodb://mongo:27017/wheelio_db
     depends_on:
       - db
+      - mongo
     networks:
       - wheelio-network
     restart: on-failure
+
+  # MongoDB Service
+  mongo:
+    image: mongo:6.0
+    container_name: wheelio-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - wheelio-network
+    restart: unless-stopped
 
   # Frontend Service
   frontend:
@@ -54,6 +68,7 @@ services:
 
 volumes:
   postgres_data:
+  mongo_data:
 
 
 networks:

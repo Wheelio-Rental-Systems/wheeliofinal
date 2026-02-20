@@ -1,15 +1,32 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
-// Fix for default marker icon missing in React-Leaflet
-// delete L.Icon.Default.prototype._getIconUrl;
-// L.Icon.Default.mergeOptions({
-//   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-//   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-//   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-// });
+// Create SVG-based emoji pin icon
+const createEmojiPin = () => {
+  const svgString = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 60" width="50" height="60">
+      <defs>
+        <filter id="drop-shadow">
+          <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.4"/>
+        </filter>
+      </defs>
+      <foreignObject x="5" y="5" width="40" height="40" filter="url(#drop-shadow)">
+        <div xmlns="http://www.w3.org/1999/xhtml" style="font-size: 35px; line-height: 1;">📍</div>
+      </foreignObject>
+    </svg>
+  `;
+  
+  const svg = encodeURIComponent(svgString);
+  return L.icon({
+    iconUrl: `data:image/svg+xml;charset=utf8,${svg}`,
+    iconSize: [50, 60],
+    iconAnchor: [25, 60],
+    popupAnchor: [0, -60],
+    className: 'emoji-marker'
+  });
+};
 
 const CITY_COORDINATES = {
     "Mumbai": [19.0760, 72.8777],
@@ -68,7 +85,7 @@ const VehicleMap = ({ city, vehicleName }) => {
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
                 {CITY_COORDINATES[city] && (
-                    <Marker position={coordinates}>
+                    <Marker position={coordinates} icon={createEmojiPin()}>
                         <Popup>
                             {vehicleName} is located in {city}
                         </Popup>

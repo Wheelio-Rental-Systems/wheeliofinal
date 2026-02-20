@@ -1,18 +1,16 @@
 package com.wheelio.backend.repository;
 
 import com.wheelio.backend.model.Vehicle;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
+
 import java.util.List;
-import java.util.UUID;
 
 @Repository
-public interface VehicleRepository extends JpaRepository<Vehicle, UUID> {
-    List<Vehicle> findByLocation(String location);
-
+public interface VehicleRepository extends MongoRepository<Vehicle, String> {
     List<Vehicle> findByStatus(Vehicle.Status status);
 
-    List<Vehicle> findByType(Vehicle.VehicleType type);
+    List<Vehicle> findByLocation(String location);
 
-    List<Vehicle> findByName(String name);
+    List<Vehicle> findByType(Vehicle.VehicleType type);
 }

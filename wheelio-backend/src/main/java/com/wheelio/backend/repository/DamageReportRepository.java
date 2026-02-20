@@ -1,18 +1,16 @@
 package com.wheelio.backend.repository;
 
 import com.wheelio.backend.model.DamageReport;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
+
 import java.util.List;
-import java.util.UUID;
 
 @Repository
-public interface DamageReportRepository extends JpaRepository<DamageReport, UUID> {
-    List<DamageReport> findByVehicleId(UUID vehicleId);
+public interface DamageReportRepository extends MongoRepository<DamageReport, String> {
+    List<DamageReport> findByVehicleId(String vehicleId);
+
+    List<DamageReport> findByReportedById(String reportedById);
 
     List<DamageReport> findByStatus(DamageReport.DamageStatus status);
-
-    List<DamageReport> findBySeverity(DamageReport.Severity severity);
-
-    List<DamageReport> findByReportedById(UUID reportedById);
 }

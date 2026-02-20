@@ -3,20 +3,21 @@ package com.wheelio.backend.service;
 import com.wheelio.backend.model.User;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 public interface UserService {
     User createUser(User user);
 
-    Optional<User> getUserById(UUID id);
+    Optional<User> getUserById(String id);
 
     Optional<User> getUserByEmail(String email);
 
     List<User> getAllUsers();
 
+    List<User> getUsersByRole(User.Role role);
+
     User updateUser(User user);
 
-    void deleteUser(UUID id);
+    void deleteUser(String id);
 
     boolean existsByEmail(String email);
 }

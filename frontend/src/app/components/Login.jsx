@@ -22,8 +22,8 @@ const Login = ({ onNavigate, onLogin }) => {
 
         try {
             if (isSignUp) {
-                // Signup
-                const response = await authAPI.signup({
+                // Signup - create account first
+                await authAPI.signup({
                     email,
                     password,
                     fullName,
@@ -31,8 +31,12 @@ const Login = ({ onNavigate, onLogin }) => {
                     phone: '' // Optional phone
                 });
 
-                toast.success('Account created successfully!');
-                onNavigate('vehicles');
+                // Then login to set user state in App.jsx
+                const result = await onLogin({ email, password });
+                toast.success('Account created successfully! Welcome to Wheelio!');
+                if (result && result.success) {
+                    onNavigate('vehicles');
+                }
             } else {
                 // Login - now handled by App.jsx
                 const result = await onLogin({ email, password });

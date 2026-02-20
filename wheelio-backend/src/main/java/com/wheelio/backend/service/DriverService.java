@@ -3,22 +3,19 @@ package com.wheelio.backend.service;
 import com.wheelio.backend.model.DriverProfile;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 public interface DriverService {
-    DriverProfile createDriverProfile(DriverProfile driverProfile);
+    DriverProfile createDriver(DriverProfile profile);
 
-    Optional<DriverProfile> getDriverProfileById(UUID userId);
+    Optional<DriverProfile> getDriverByUserId(String userId);
 
-    List<DriverProfile> getAllDriverProfiles();
+    List<DriverProfile> getAllDrivers();
 
     List<DriverProfile> getAvailableDrivers();
 
-    List<DriverProfile> getAvailableDriversByCity(String city);
+    DriverProfile updateDriver(DriverProfile profile);
 
-    List<DriverProfile> getDriversByStatus(DriverProfile.DriverStatus status);
+    void deleteDriver(String id);
 
-    DriverProfile updateDriverProfile(DriverProfile driverProfile);
-
-    void deleteDriverProfile(UUID userId);
+    boolean existsByUserId(String userId);
 }

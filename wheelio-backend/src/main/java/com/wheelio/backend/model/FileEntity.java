@@ -1,22 +1,20 @@
 package com.wheelio.backend.model;
 
-import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-@Entity
-@Table(name = "files")
+@Document(collection = "files")
 @Data
 @NoArgsConstructor
 public class FileEntity {
+
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
     private String name;
     private String contentType;
-
-    @Lob
     private byte[] data;
 
     public FileEntity(String name, String contentType, byte[] data) {

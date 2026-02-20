@@ -1,64 +1,53 @@
 package com.wheelio.backend.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
-@Entity
-@Table(name = "bookings")
+@Document(collection = "bookings")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class Booking {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    private String id;
 
-    @ManyToOne
-    @JoinColumn(name = "user_id", nullable = false)
-    @JsonIgnoreProperties({ "passwordHash", "hibernateLazyInitializer", "handler" })
-    private User user;
+    @Indexed
+    private String userId;
 
-    @ManyToOne
-    @JoinColumn(name = "vehicle_id", nullable = false)
-    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
-    private Vehicle vehicle;
+    @Indexed
+    private String vehicleId;
 
-    @ManyToOne
-    @JoinColumn(name = "driver_id")
-    @JsonIgnoreProperties({ "passwordHash", "hibernateLazyInitializer", "handler" })
-    private User driver;
+    private String driverId;
 
-    @Column(name = "start_date", nullable = false)
+    // Denormalized snapshot for display (vehicle name, image, etc.)
+    private VehicleSummary vehicleSummary;
+
+    // Denormalized user name for display
+    private String userName;
+
     private LocalDateTime startDate;
 
-    @Column(name = "end_date", nullable = false)
     private LocalDateTime endDate;
 
-    @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalAmount;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private BookingStatus status = BookingStatus.PENDING;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "payment_status", nullable = false)
     private PaymentStatus paymentStatus = PaymentStatus.PENDING;
 
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
+    private String pickupLocation;
+    private String dropLocation;
+    private String contactPhone;
 
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-    }
+    private LocalDateTime createdAt;
 
     public enum BookingStatus {
         PENDING, CONFIRMED, COMPLETED, CANCELLED
@@ -66,5 +55,19 @@ public class Booking {
 
     public enum PaymentStatus {
         PENDING, PAID, REFUNDED
+    }
+
+    /** Embedded snapshot so bookings can display vehicle info without a join */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class VehicleSummary {
+        private String vehicleId;
+        private String name;
+        private String brand;
+        private String type;
+        private String imageUrl;
+        private BigDecimal pricePerDay;
+        private String location;
     }
 }

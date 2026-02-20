@@ -1,166 +1,296 @@
 package com.wheelio.backend.config;
 
+import com.wheelio.backend.model.DriverProfile;
 import com.wheelio.backend.model.User;
 import com.wheelio.backend.model.Vehicle;
+import com.wheelio.backend.repository.DriverProfileRepository;
 import com.wheelio.backend.repository.UserRepository;
 import com.wheelio.backend.repository.VehicleRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.List;
 
-@Configuration
-@Profile("dev")
-public class DataSeeder {
+@Component
+public class DataSeeder implements CommandLineRunner {
 
-        @Bean
-        CommandLineRunner initDatabase(UserRepository userRepository, VehicleRepository vehicleRepository,
-                        PasswordEncoder passwordEncoder) {
-                return args -> {
-                        // Seed Admin
-                        User admin = userRepository.findByEmail("admin@wheelio.com").orElse(new User());
-                        admin.setEmail("admin@wheelio.com");
-                        if (admin.getPasswordHash() == null)
-                                admin.setPasswordHash(passwordEncoder.encode("admin123"));
-                        admin.setFullName("Admin User");
-                        admin.setRole(User.Role.ADMIN);
-                        admin.setPhone("9999999999");
-                        admin.setCity("Headquarters");
-                        userRepository.save(admin);
+        private static final Logger logger = LoggerFactory.getLogger(DataSeeder.class);
 
-                        // Seed Driver
-                        User driver = userRepository.findByEmail("driver@wheelio.com").orElse(new User());
-                        driver.setEmail("driver@wheelio.com");
-                        if (driver.getPasswordHash() == null)
-                                driver.setPasswordHash(passwordEncoder.encode("driver123"));
-                        driver.setFullName("Test Driver");
-                        driver.setRole(User.Role.DRIVER);
-                        driver.setPhone("8888888888");
-                        driver.setCity("Chennai");
-                        userRepository.save(driver);
+        @Autowired
+        private UserRepository userRepository;
+        @Autowired
+        private VehicleRepository vehicleRepository;
+        @Autowired
+        private DriverProfileRepository driverProfileRepository;
+        @Autowired
+        private PasswordEncoder passwordEncoder;
 
-                        // Seed Staff
-                        User staff = userRepository.findByEmail("staff@wheelio.com").orElse(new User());
-                        staff.setEmail("staff@wheelio.com");
-                        if (staff.getPasswordHash() == null)
-                                staff.setPasswordHash(passwordEncoder.encode("staff123"));
-                        staff.setFullName("Staff Member");
-                        staff.setRole(User.Role.STAFF);
-                        staff.setPhone("7777777777");
-                        staff.setCity("Bangalore");
-                        userRepository.save(staff);
-
-                        try {
-                                // Seed all 24 Vehicles from frontend/src/app/data/vehicles.js
-                                seedVehicle(vehicleRepository, "Maruti Swift", "Maruti Suzuki",
-                                                Vehicle.VehicleType.HATCHBACK, "1200.00", "Mumbai",
-                                                "/images/swift.jpeg", "Perfect for city driving.",
-                                                List.of("AC", "Music System", "Airbags"));
-                                seedVehicle(vehicleRepository, "Hyundai Creta", "Hyundai", Vehicle.VehicleType.SUV,
-                                                "2500.00", "Bangalore", "/images/creta.jpg", "Premium SUV.",
-                                                List.of("Sunroof", "Ventilated Seats", "Bose Audio"));
-                                seedVehicle(vehicleRepository, "Mahindra Thar 4x4", "Mahindra", Vehicle.VehicleType.SUV,
-                                                "3500.00", "Coimbatore", "/images/thar.jpeg", "Explore the impossible.",
-                                                List.of("4x4 Drivetrain", "Convertible Top"));
-                                seedVehicle(vehicleRepository, "Tata Nexon EV", "Tata Motors", Vehicle.VehicleType.SUV,
-                                                "2800.00", "Pune", "/images/tata nexon ev.jpg",
-                                                "Go Green with Tata Nexon EV.",
-                                                List.of("Regenerative Braking", "Sunroof"));
-                                seedVehicle(vehicleRepository, "Toyota Innova Crysta", "Toyota",
-                                                Vehicle.VehicleType.MPV, "3800.00", "Chennai", "/images/pos.jpg",
-                                                "Unmatched Comfort.", List.of("Captain Seats", "Ambient Lighting"));
-                                seedVehicle(vehicleRepository, "Honda City 5th Gen", "Honda", Vehicle.VehicleType.SEDAN,
-                                                "2200.00", "Delhi", "/images/honda city 5th gen.jpg",
-                                                "Sophistication and comfort.",
-                                                List.of("Lane Watch", "Sunroof", "Alexa"));
-                                seedVehicle(vehicleRepository, "Mahindra XUV700", "Mahindra", Vehicle.VehicleType.SUV,
-                                                "3200.00", "Hyderabad", "/images/Mahindra XUV700.jpeg",
-                                                "Experience the rush.", List.of("ADAS Level 2", "Dual HD Screens"));
-                                seedVehicle(vehicleRepository, "Kia Seltos", "Kia", Vehicle.VehicleType.SUV, "2400.00",
-                                                "Kolkata", "/images/Kia Seltos.jpeg", "Badass by design.",
-                                                List.of("Heads-Up Display", "360 Camera"));
-                                seedVehicle(vehicleRepository, "Tata Safari", "Tata Motors", Vehicle.VehicleType.SUV,
-                                                "3300.00", "Mumbai", "/images/Tata Safari.webp", "Reclaim your life.",
-                                                List.of("Panoramic Sunroof", "Captain Seats"));
-                                seedVehicle(vehicleRepository, "Hyundai Verna", "Hyundai", Vehicle.VehicleType.SEDAN,
-                                                "2100.00", "Pune", "/images/Hyundai Verna.jpeg", "Futuristic Ferocity.",
-                                                List.of("ADAS", "Dual 10.25\" Screens"));
-                                seedVehicle(vehicleRepository, "Maruti Brezza", "Maruti Suzuki",
-                                                Vehicle.VehicleType.SUV, "1800.00", "Jaipur",
-                                                "/images/Maruti Brezza.avif", "The City-Bred SUV.",
-                                                List.of("Sunroof", "360 Camera"));
-                                seedVehicle(vehicleRepository, "Fortuner Legender", "Toyota", Vehicle.VehicleType.SUV,
-                                                "6500.00", "Chandigarh", "/images/for2.jpeg", "Power to Lead.",
-                                                List.of("4x4 Sigma 4", "Kick Sensor Boot"));
-                                seedVehicle(vehicleRepository, "Royal Enfield Himalayan 450", "Royal Enfield",
-                                                Vehicle.VehicleType.BIKE, "1500.00", "Manali",
-                                                "/images/himalayan 450.jpg", "Built for all roads.",
-                                                List.of("Tripper Navigation", "Switchable ABS"));
-                                seedVehicle(vehicleRepository, "Royal Enfield Classic 350", "Royal Enfield",
-                                                Vehicle.VehicleType.BIKE, "1100.00", "Chennai", "/images/cl1.avif",
-                                                "The Reborn Classic.",
-                                                List.of("Dual Channel ABS", "Digital-Analog Cluster"));
-                                seedVehicle(vehicleRepository, "KTM Duke 390", "KTM", Vehicle.VehicleType.BIKE,
-                                                "1800.00", "Bangalore", "/images/duke1.avif", "The Corner Rocket.",
-                                                List.of("Quickshifter+", "TFT Display"));
-                                seedVehicle(vehicleRepository, "Bajaj Dominar 400", "Bajaj", Vehicle.VehicleType.BIKE,
-                                                "1400.00", "Pune", "/images/dom.jpg", "The Sports Tourer.",
-                                                List.of("Touring Accessories", "USD Forks"));
-                                seedVehicle(vehicleRepository, "Yamaha R15 V4", "Yamaha", Vehicle.VehicleType.BIKE,
-                                                "1200.00", "Kochi", "/images/r15.jpg", "Racing DNA.",
-                                                List.of("Quickshifter", "Traction Control"));
-                                seedVehicle(vehicleRepository, "TVS Apache RR 310", "TVS", Vehicle.VehicleType.BIKE,
-                                                "1600.00", "Hosur", "/images/TVS Apache RR 310.jpeg",
-                                                "Crafted to outperform.", List.of("Ride Modes", "TFT Display"));
-                                seedVehicle(vehicleRepository, "Honda Hness CB350", "Honda", Vehicle.VehicleType.BIKE,
-                                                "1300.00", "Goa", "/images/Honda Hness CB350.jpeg",
-                                                "Your Highness has arrived.",
-                                                List.of("Honda Smartphone Voice Control", "Traction Control"));
-                                seedVehicle(vehicleRepository, "Jawa 42 Bobber", "Jawa", Vehicle.VehicleType.BIKE,
-                                                "1450.00", "Mumbai", "/images/bob2.avif", "Factory Custom.",
-                                                List.of("Floating Seat", "LED Tail Lamp"));
-                                seedVehicle(vehicleRepository, "Hero Xpulse 200 4V", "Hero", Vehicle.VehicleType.BIKE,
-                                                "1000.00", "Rishikesh", "/images/Hero Xpulse 200 4V.jpg",
-                                                "Make New Tracks.",
-                                                List.of("Rally Kit Compatible", "Turn-by-Turn Nav"));
-                                seedVehicle(vehicleRepository, "Ather 450X", "Ather Energy",
-                                                Vehicle.VehicleType.SCOOTER, "900.00", "Bangalore",
-                                                "/images/ather2.avif", "The Super Scooter.",
-                                                List.of("Google Maps", "Touchscreen"));
-                                seedVehicle(vehicleRepository, "Ola S1 Pro", "Ola Electric",
-                                                Vehicle.VehicleType.SCOOTER, "850.00", "Chennai",
-                                                "/images/Ola S1 Pro.jpg", "#EndICEAge.",
-                                                List.of("Hyper Mode", "Cruise Control"));
-                                seedVehicle(vehicleRepository, "Continental GT 650", "Royal Enfield",
-                                                Vehicle.VehicleType.BIKE, "1900.00", "Goa",
-                                                "/images/Continental GT 650.webp", "Ton of Fun.",
-                                                List.of("Twin Cylinder", "Clip-on Bars"));
-
-                        } catch (Exception e) {
-                                System.err.println("ERROR: Vehicle seeding failed.");
-                                e.printStackTrace();
-                        }
-                };
+        @Override
+        public void run(String... args) {
+                seedAdmin();
+                seedTestUser();
+                seedVehicles();
+                seedDrivers();
         }
 
-        private void seedVehicle(VehicleRepository repository, String name, String brand, Vehicle.VehicleType type,
-                        String price, String location, String imageUrl, String description, List<String> features) {
-                if (repository.findByName(name).isEmpty()) {
-                        Vehicle v = new Vehicle();
-                        v.setName(name);
-                        v.setBrand(brand);
-                        v.setType(type);
-                        v.setPricePerDay(new BigDecimal(price));
-                        v.setLocation(location);
-                        v.setImageUrl(imageUrl);
-                        v.setDescription(description);
-                        v.setFeatures(features);
-                        v.setStatus(Vehicle.Status.AVAILABLE);
-                        repository.save(v);
+        private void seedTestUser() {
+                if (userRepository.existsByEmail("user@wheelio.com")) {
+                        logger.info("Test user already exists, skipping.");
+                        return;
                 }
+                User user = new User();
+                user.setId("6997c2094452e44f57b18001");
+                user.setEmail("user@wheelio.com");
+                user.setPasswordHash(passwordEncoder.encode("User@123"));
+                user.setFullName("Test User");
+                user.setRole(User.Role.USER);
+                user.setPhone("9876543210");
+                user.setCity("Mumbai");
+                userRepository.save(user);
+                logger.info("Test user seeded: user@wheelio.com / User@123");
+        }
+
+        private void seedAdmin() {
+                if (userRepository.existsByEmail("admin@wheelio.com")) {
+                        logger.info("Admin already exists, skipping.");
+                        return;
+                }
+                User admin = new User();
+                admin.setId("6997c2094452e44f57b18000"); // Fixed ID for synchronization
+                admin.setEmail("admin@wheelio.com");
+                admin.setPasswordHash(passwordEncoder.encode("Admin@123"));
+                admin.setFullName("Wheelio Admin");
+                admin.setRole(User.Role.ADMIN);
+                admin.setPhone("9000000000");
+                admin.setCity("Chennai");
+                userRepository.save(admin);
+                logger.info("Admin seeded: admin@wheelio.com / Admin@123");
+        }
+
+        private void seedVehicles() {
+                if (vehicleRepository.count() > 0) {
+                        logger.info("Vehicles already seeded, skipping.");
+                        return;
+                }
+
+                List<Vehicle> vehicles = Arrays.asList(
+                                makeVehicle("507f1f77bcf86cd799439001", "Maruti Swift", "Maruti Suzuki",
+                                                Vehicle.VehicleType.HATCHBACK,
+                                                new BigDecimal("1200"), "Mumbai", Vehicle.Status.AVAILABLE,
+                                                "/images/swift.jpeg", Arrays.asList("Dual Airbags", "ABS with EBD"),
+                                                "The Maruti Swift is India's favourite hatchback."),
+                                makeVehicle("507f1f77bcf86cd799439002", "Hyundai Creta", "Hyundai",
+                                                Vehicle.VehicleType.SUV,
+                                                new BigDecimal("2500"), "Bangalore", Vehicle.Status.AVAILABLE,
+                                                "/images/creta.jpg",
+                                                Arrays.asList("Panoramic Sunroof", "Ventilated Seats"),
+                                                "The Ultimate SUV."),
+                                makeVehicle("507f1f77bcf86cd799439003", "Mahindra Thar 4x4", "Mahindra",
+                                                Vehicle.VehicleType.SUV,
+                                                new BigDecimal("3500"), "Coimbatore", Vehicle.Status.AVAILABLE,
+                                                "/images/thar.jpeg", Arrays.asList("4x4 Drivetrain"),
+                                                "The Mahindra Thar is a legendary off-roader."),
+                                makeVehicle("507f1f77bcf86cd799439004", "Tata Nexon EV", "Tata Motors",
+                                                Vehicle.VehicleType.SUV,
+                                                new BigDecimal("2800"), "Pune", Vehicle.Status.AVAILABLE,
+                                                "/images/tata nexon ev.jpg", Arrays.asList("Regenerative Braking"),
+                                                "Go Green with the Tata Nexon EV."),
+                                makeVehicle("507f1f77bcf86cd799439005", "Toyota Innova Crysta", "Toyota",
+                                                Vehicle.VehicleType.MPV,
+                                                new BigDecimal("3800"), "Chennai", Vehicle.Status.AVAILABLE,
+                                                "/images/toyata crysta.jpg", Arrays.asList("Captain Seats"),
+                                                "Unmatched Comfort."),
+                                makeVehicle("507f1f77bcf86cd799439006", "Honda City 5th Gen", "Honda",
+                                                Vehicle.VehicleType.SEDAN,
+                                                new BigDecimal("2200"), "Delhi", Vehicle.Status.AVAILABLE,
+                                                "/images/honda city 5th gen.jpg", Arrays.asList("Lane Watch Camera"),
+                                                "A class apart."),
+                                makeVehicle("507f1f77bcf86cd799439007", "Mahindra XUV700", "Mahindra",
+                                                Vehicle.VehicleType.SUV,
+                                                new BigDecimal("3200"), "Hyderabad", Vehicle.Status.AVAILABLE,
+                                                "/images/Mahindra XUV700.jpeg", Arrays.asList("ADAS Level 2"),
+                                                "Experience the rush."),
+                                makeVehicle("507f1f77bcf86cd799439008", "Kia Seltos", "Kia", Vehicle.VehicleType.SUV,
+                                                new BigDecimal("2400"),
+                                                "Kolkata", Vehicle.Status.AVAILABLE, "/images/Kia Seltos.jpeg",
+                                                Arrays.asList("360 Camera"), "Badass by design."),
+                                makeVehicle("507f1f77bcf86cd799439009", "Tata Safari", "Tata Motors",
+                                                Vehicle.VehicleType.SUV,
+                                                new BigDecimal("3300"), "Mumbai", Vehicle.Status.MAINTENANCE,
+                                                "/images/Tata Safari.webp", Arrays.asList("JBL Audio"),
+                                                "Reclaim your life."),
+                                makeVehicle("507f1f77bcf86cd799439010", "Hyundai Verna", "Hyundai",
+                                                Vehicle.VehicleType.SEDAN,
+                                                new BigDecimal("2100"), "Pune", Vehicle.Status.AVAILABLE,
+                                                "/images/Hyundai Verna.jpeg", Arrays.asList("ADAS"),
+                                                "Futuristic Ferocity."),
+                                makeVehicle("507f1f77bcf86cd799439011", "Maruti Brezza", "Maruti Suzuki",
+                                                Vehicle.VehicleType.SUV,
+                                                new BigDecimal("1800"), "Jaipur", Vehicle.Status.AVAILABLE,
+                                                "/images/Maruti Brezza.avif", Arrays.asList("Sunroof"),
+                                                "The City-Bred SUV."),
+                                makeVehicle("507f1f77bcf86cd799439012", "Fortuner Legender", "Toyota",
+                                                Vehicle.VehicleType.SUV,
+                                                new BigDecimal("6500"), "Chandigarh", Vehicle.Status.AVAILABLE,
+                                                "/images/for2.jpeg", Arrays.asList("4x4 Sigma 4"), "Power to Lead."),
+                                makeVehicle("507f1f77bcf86cd799439013", "Royal Enfield Himalayan 450", "Royal Enfield",
+                                                Vehicle.VehicleType.BIKE, new BigDecimal("1500"), "Manali",
+                                                Vehicle.Status.AVAILABLE, "/images/himalayan 450.jpg",
+                                                Arrays.asList("Tripper Navigation"), "Built for all roads."),
+                                makeVehicle("507f1f77bcf86cd799439014", "Royal Enfield Classic 350", "Royal Enfield",
+                                                Vehicle.VehicleType.BIKE, new BigDecimal("1100"), "Chennai",
+                                                Vehicle.Status.AVAILABLE, "/images/cl1.avif",
+                                                Arrays.asList("Timeless Design"), "The Reborn Classic."),
+                                makeVehicle("507f1f77bcf86cd799439015", "KTM Duke 390", "KTM", Vehicle.VehicleType.BIKE,
+                                                new BigDecimal("1800"), "Bangalore", Vehicle.Status.AVAILABLE,
+                                                "/images/duke1.avif", Arrays.asList("Quickshifter+"),
+                                                "The Corner Rocket."),
+                                makeVehicle("507f1f77bcf86cd799439016", "Bajaj Dominar 400", "Bajaj",
+                                                Vehicle.VehicleType.BIKE,
+                                                new BigDecimal("1400"), "Pune", Vehicle.Status.AVAILABLE,
+                                                "/images/dom.jpg", Arrays.asList("Touring Accessories"),
+                                                "The Sports Tourer."),
+                                makeVehicle("507f1f77bcf86cd799439017", "Yamaha R15 V4", "Yamaha",
+                                                Vehicle.VehicleType.BIKE,
+                                                new BigDecimal("1200"), "Kochi", Vehicle.Status.AVAILABLE,
+                                                "/images/r15.jpg", Arrays.asList("VVA Technology"), "Racing DNA."),
+                                makeVehicle("507f1f77bcf86cd799439018", "TVS Apache RR 310", "TVS",
+                                                Vehicle.VehicleType.BIKE,
+                                                new BigDecimal("1600"), "Hosur", Vehicle.Status.AVAILABLE,
+                                                "/images/TVS Apache RR 310.jpeg", Arrays.asList("Ride Modes"),
+                                                "Crafted to outperform."),
+                                makeVehicle("507f1f77bcf86cd799439019", "Honda Hness CB350", "Honda",
+                                                Vehicle.VehicleType.BIKE,
+                                                new BigDecimal("1300"), "Goa", Vehicle.Status.AVAILABLE,
+                                                "/images/Honda Hness CB350.jpeg", Arrays.asList("Full LED"),
+                                                "Your Highness has arrived."),
+                                makeVehicle("507f1f77bcf86cd799439020", "Jawa 42 Bobber", "Jawa",
+                                                Vehicle.VehicleType.BIKE,
+                                                new BigDecimal("1450"), "Mumbai", Vehicle.Status.AVAILABLE,
+                                                "/images/bob2.avif", Arrays.asList("Floating Seat"), "Factory Custom."),
+                                makeVehicle("507f1f77bcf86cd799439021", "Hero Xpulse 200 4V", "Hero",
+                                                Vehicle.VehicleType.BIKE,
+                                                new BigDecimal("1000"), "Rishikesh", Vehicle.Status.AVAILABLE,
+                                                "/images/Hero Xpulse 200 4V.jpg", Arrays.asList("ABS"),
+                                                "Make New Tracks."),
+                                makeVehicle("507f1f77bcf86cd799439022", "Ather 450X", "Ather Energy",
+                                                Vehicle.VehicleType.SCOOTER,
+                                                new BigDecimal("900"), "Bangalore", Vehicle.Status.AVAILABLE,
+                                                "/images/ather2.avif", Arrays.asList("Google Maps"),
+                                                "The Super Scooter."),
+                                makeVehicle("507f1f77bcf86cd799439023", "Ola S1 Pro", "Ola Electric",
+                                                Vehicle.VehicleType.SCOOTER,
+                                                new BigDecimal("850"), "Chennai", Vehicle.Status.AVAILABLE,
+                                                "/images/Ola S1 Pro.jpg", Arrays.asList("Hyper Mode"), "#EndICEAge."),
+                                makeVehicle("507f1f77bcf86cd799439024", "Continental GT 650", "Royal Enfield",
+                                                Vehicle.VehicleType.BIKE,
+                                                new BigDecimal("1900"), "Goa", Vehicle.Status.AVAILABLE,
+                                                "/images/Continental GT 650.webp", Arrays.asList("Twin Cylinder"),
+                                                "Ton of Fun."));
+
+                vehicleRepository.saveAll(vehicles);
+                logger.info("Seeded {} vehicles.", vehicles.size());
+        }
+
+        private void seedDrivers() {
+                if (driverProfileRepository.count() > 0) {
+                        logger.info("Drivers already seeded, skipping.");
+                        return;
+                }
+                // All 20 drivers matching drivers.js — email: firstname.lastname@wheelio.com,
+                // password: Driver@123
+                seedDriver("6997c2094452e44f57b180dd", "rajesh.kumar@wheelio.com", "Rajesh Kumar", "9876540001",
+                                "Mumbai", "MH01D10001");
+                seedDriver("6997c2094452e44f57b180df", "suresh.patel@wheelio.com", "Suresh Patel", "9876540002",
+                                "Delhi", "DL01D10002");
+                seedDriver("6997c2094452e44f57b180e1", "amit.singh@wheelio.com", "Amit Singh", "9876540003",
+                                "Bangalore", "KA01D10003");
+                seedDriver("6997c2094452e44f57b180e3", "vikram.reddy@wheelio.com", "Vikram Reddy", "9876540004",
+                                "Hyderabad", "TS09D10004");
+                seedDriver("6997c2094452e44f57b180e5", "karthik.subramanian@wheelio.com", "Karthik Subramanian",
+                                "9876540005", "Chennai", "TN09D10005");
+                seedDriver("6997c20a4452e44f57b180e7", "arjun.das@wheelio.com", "Arjun Das", "9876540006", "Kolkata",
+                                "WB01D10006");
+                seedDriver("6997c20a4452e44f57b180e9", "rahul.sharma@wheelio.com", "Rahul Sharma", "9876540007", "Pune",
+                                "MH12D10007");
+                seedDriver("6997c20a4452e44f57b180eb", "manish.gupta@wheelio.com", "Manish Gupta", "9876540008",
+                                "Ahmedabad", "GJ01D10008");
+                seedDriver("6997c20a4452e44f57b180ed", "vijay.verma@wheelio.com", "Vijay Verma", "9876540009", "Jaipur",
+                                "RJ14D10009");
+                seedDriver("6997c20a4452e44f57b180ef", "deepak.mehta@wheelio.com", "Deepak Mehta", "9876540010",
+                                "Surat", "GJ05D10010");
+                seedDriver("6997c20a4452e44f57b180f1", "sanjay.menon@wheelio.com", "Sanjay Menon", "9876540011",
+                                "Coimbatore", "TN37D10011");
+                seedDriver("6997c20a4452e44f57b180f3", "rohan.kapoor@wheelio.com", "Rohan Kapoor", "9876540012",
+                                "Lucknow", "UP32D10012");
+                seedDriver("6997c20a4452e44f57b180f5", "anil.tiwari@wheelio.com", "Anil Tiwari", "9876540013", "Kanpur",
+                                "UP78D10013");
+                seedDriver("6997c20a4452e44f57b180f7", "prakash.joshi@wheelio.com", "Prakash Joshi", "9876540014",
+                                "Nagpur", "MH31D10014");
+                seedDriver("6997c20a4452e44f57b180f9", "mohit.agarwal@wheelio.com", "Mohit Agarwal", "9876540015",
+                                "Indore", "MP09D10015");
+                seedDriver("6997c20a4452e44f57b180fb", "ganesh.patil@wheelio.com", "Ganesh Patil", "9876540016",
+                                "Thane", "MH04D10016");
+                seedDriver("6997c20a4452e44f57b180fd", "vikas.yadav@wheelio.com", "Vikas Yadav", "9876540017", "Bhopal",
+                                "MP04D10017");
+                seedDriver("6997c20b4452e44f57b180ff", "naveen.raju@wheelio.com", "Naveen Raju", "9876540018",
+                                "Visakhapatnam", "AP11D10018");
+                seedDriver("6997c20b4452e44f57b18101", "sachin.deshmukh@wheelio.com", "Sachin Deshmukh", "9876540019",
+                                "Pimpri-Chinchwad", "MH14D10019");
+                seedDriver("6997c20b4452e44f57b18103", "rakesh.jha@wheelio.com", "Rakesh Jha", "9876540020", "Patna",
+                                "BR01D10020");
+                logger.info("Seeded 20 drivers matching drivers.js.");
+        }
+
+        private void seedDriver(String id, String email, String fullName, String phone, String city,
+                        String licenseNumber) {
+                User user;
+                if (userRepository.existsByEmail(email)) {
+                        user = userRepository.findByEmail(email).orElseThrow();
+                } else {
+                        user = new User();
+                        user.setId(id);
+                        user.setEmail(email);
+                        user.setPasswordHash(passwordEncoder.encode("Driver@123"));
+                        user.setFullName(fullName);
+                        user.setRole(User.Role.DRIVER);
+                        user.setPhone(phone);
+                        user.setCity(city);
+                        user = userRepository.save(user);
+                }
+                if (!driverProfileRepository.existsByUserId(user.getId())) {
+                        DriverProfile profile = new DriverProfile();
+                        profile.setUserId(user.getId());
+                        profile.setFullName(fullName);
+                        profile.setEmail(email);
+                        profile.setPhone(phone);
+                        profile.setCity(city);
+                        profile.setLicenseNumber(licenseNumber);
+                        profile.setStatus("ACTIVE");
+                        driverProfileRepository.save(profile);
+                }
+        }
+
+        private Vehicle makeVehicle(String id, String name, String brand, Vehicle.VehicleType type,
+                        BigDecimal price, String location, Vehicle.Status status,
+                        String imageUrl, List<String> features, String description) {
+                Vehicle v = new Vehicle();
+                v.setId(id);
+                v.setName(name);
+                v.setBrand(brand);
+                v.setType(type);
+                v.setPricePerDay(price);
+                v.setLocation(location);
+                v.setStatus(status);
+                v.setImageUrl(imageUrl);
+                v.setFeatures(features);
+                v.setDescription(description);
+                return v;
         }
 }

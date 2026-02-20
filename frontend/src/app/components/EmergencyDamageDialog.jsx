@@ -1,5 +1,8 @@
-import { AlertCircle, Upload, MapPin, X, Camera, CheckCircle } from "lucide-react";
-import { useState } from "react";
+import { AlertCircle, Upload, MapPin, X, Camera, CheckCircle, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { createDamageReport } from "../../api/damageReports";
+import { toast } from "sonner";
+import { getUser } from "../../api/config";
 import {
   Dialog,
   DialogContent,
@@ -14,13 +17,19 @@ import { Textarea } from "./ui/textarea";
 
 // interface EmergencyDamageDialogProps removed (JS file)
 
-export function EmergencyDamageDialog({ open, onOpenChange }) {
+export function EmergencyDamageDialog({ open, onOpenChange, vehicleId }) {
   const [damageDescription, setDamageDescription] = useState("");
   const [location, setLocation] = useState("");
   const [uploadedImages, setUploadedImages] = useState([]);
   const [previewUrls, setPreviewUrls] = useState([]);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const userData = getUser();
+    setUser(userData);
+  }, []);
 
   const handleImageUpload = (e) => {
     const files = e.target.files;
@@ -53,7 +62,7 @@ export function EmergencyDamageDialog({ open, onOpenChange }) {
         },
         (error) => {
           console.error("Error getting location:", error);
-          setLocation("Unable to fetch location");
+          toast.error("Unable to fetch location");
         }
       );
     }
@@ -61,13 +70,28 @@ export function EmergencyDamageDialog({ open, onOpenChange }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsLoading(true);
+    if (!user) {
+      toast.error("Please login to report damage");
+      return;
+    }
 
-    // Simulate API call
-    setTimeout(() => {
+    setIsLoading(true);
+    try {
+      await createDamageReport({
+        vehicleId: vehicleId || "00000000-0000-0000-0000-000000000000",
+        reportedById: user.id,
+        description: `EMERGENCY: ${damageDescription}`,
+        images: previewUrls,
+        severity: "CRITICAL",
+        status: "OPEN"
+      });
       setIsSubmitted(true);
+    } catch (error) {
+      console.error("Failed to submit emergency report", error);
+      toast.error("Failed to submit report. Please try our emergency line.");
+    } finally {
       setIsLoading(false);
-    }, 2000);
+    }
   };
 
   const handleClose = () => {

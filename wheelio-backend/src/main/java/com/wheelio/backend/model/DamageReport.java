@@ -1,62 +1,50 @@
 package com.wheelio.backend.model;
 
-import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 
-@Entity
-@Table(name = "damage_reports")
+@Document(collection = "damage_reports")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class DamageReport {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    private String id;
 
-    @ManyToOne
-    @JoinColumn(name = "vehicle_id", nullable = false)
-    private Vehicle vehicle;
+    @Indexed
+    private String vehicleId;
 
-    @ManyToOne
-    @JoinColumn(name = "reported_by", nullable = false)
-    private User reportedBy;
+    private String vehicleName;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Indexed
+    private String reportedById;
+
+    private String reportedByName;
+
     private String description;
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb")
     private List<String> images;
 
-    @Enumerated(EnumType.STRING)
-    @Column(length = 20)
     private Severity severity;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
     private DamageStatus status = DamageStatus.OPEN;
 
-    @Column(name = "estimated_cost", precision = 10, scale = 2)
-    private java.math.BigDecimal estimatedCost;
+    private BigDecimal estimatedCost;
 
-    @Column(name = "razorpay_payment_id", length = 100)
     private String razorpayPaymentId;
 
-    @Column(name = "created_at", updatable = false)
+    @CreatedDate
     private LocalDateTime createdAt;
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-    }
 
     public enum Severity {
         LOW, MEDIUM, HIGH, CRITICAL

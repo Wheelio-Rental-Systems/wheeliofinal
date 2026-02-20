@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import ReviewDialog from './ReviewDialog';
 import { getDamageReportsByUserId, markDamageReportPaid } from '../../api/damageReports';
 
-const Dashboard = ({ onNavigate, user, bookings = [], onUpdateBooking, onCancelBooking, onUpdateUser, onReview, onLogout }) => {
+const Dashboard = ({ onNavigate, user, bookings = [], onUpdateBooking, onCancelBooking, onUpdateUser, onReview, onLogout, initialTab = 'overview', onTabChange }) => {
     const [isReviewOpen, setIsReviewOpen] = useState(false);
     const [bookingToReview, setBookingToReview] = useState(null);
 
@@ -21,7 +21,19 @@ const Dashboard = ({ onNavigate, user, bookings = [], onUpdateBooking, onCancelB
         }
     };
 
-    const [activeTab, setActiveTab] = useState('overview');
+    const [activeTab, setActiveTab] = useState(initialTab || 'overview');
+
+    // Sync when parent changes initialTab (e.g. after booking)
+    useEffect(() => {
+        if (initialTab && initialTab !== activeTab) {
+            setActiveTab(initialTab);
+        }
+    }, [initialTab]);
+
+    const handleTabChange = (tab) => {
+        setActiveTab(tab);
+        if (onTabChange) onTabChange(tab);
+    };
     const [hostedVehicles, setHostedVehicles] = useState([]);
     const [profileData, setProfileData] = useState({
         name: user?.name || '',
@@ -132,26 +144,31 @@ const Dashboard = ({ onNavigate, user, bookings = [], onUpdateBooking, onCancelB
     };
 
     const [userDamageReports, setUserDamageReports] = useState([]);
+    const [isFetchingReports, setIsFetchingReports] = useState(false);
+
+    const fetchDamageReports = async () => {
+        if (!user?.id) return;
+        setIsFetchingReports(true);
+        try {
+            const reports = await getDamageReportsByUserId(user.id);
+            setUserDamageReports(reports);
+        } catch (err) {
+            console.error('Error fetching damage reports:', err);
+        } finally {
+            setIsFetchingReports(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchDamageReports = async () => {
-            if (user?.id) {
-                try {
-                    const reports = await getDamageReportsByUserId(user.id);
-                    setUserDamageReports(reports);
-                } catch (err) {
-                    console.error('Error fetching damage reports from backend:', err);
-                    toast.error("Failed to load damage reports.");
-                }
-            } else if (user?.email) {
-                // Fallback to fetch by email if ID is missing (though backend usually uses ID)
-                // If the backend only supports ID, this might fail. 
-                // We will assume ID is present or handle it.
-                console.warn("User ID missing for fetching damage reports");
-            }
-        };
         fetchDamageReports();
     }, [user]);
+
+    // Refresh damage reports when the damage-reports tab is opened
+    useEffect(() => {
+        if (activeTab === 'damage-reports') {
+            fetchDamageReports();
+        }
+    }, [activeTab]);
 
     // Load Razorpay script and return a Promise
     const loadRazorpay = () => {
@@ -289,10 +306,16 @@ const Dashboard = ({ onNavigate, user, bookings = [], onUpdateBooking, onCancelB
     const [isCancelOpen, setIsCancelOpen] = useState(false);
     const [isExtendOpen, setIsExtendOpen] = useState(false);
     const [bookingToCancel, setBookingToCancel] = useState(null);
+    const [bookingToExtend, setBookingToExtend] = useState(null);
 
     const handleCancelRide = (bookingId) => {
         setBookingToCancel(bookingId);
         setIsCancelOpen(true);
+    };
+
+    const handleExtendRide = (booking) => {
+        setBookingToExtend(booking);
+        setIsExtendOpen(true);
     };
 
     const handleConfirmCancel = (data) => {
@@ -303,6 +326,7 @@ const Dashboard = ({ onNavigate, user, bookings = [], onUpdateBooking, onCancelB
     };
 
     const handleExtendTrip = () => {
+        setBookingToExtend(bookings[0] || null);
         setIsExtendOpen(true);
     };
 
@@ -330,17 +354,18 @@ Thank you for choosing Wheelio!
     };
 
     const handleConfirmExtend = (data) => {
-        if (onUpdateBooking && bookings.length > 0) {
-            const currentBooking = bookings[0];
+        const targetBooking = bookingToExtend || (bookings.length > 0 ? bookings[0] : null);
+        if (onUpdateBooking && targetBooking) {
             const newEndDate = data.newEndDate || "Extended";
             onUpdateBooking({
-                id: currentBooking.id,
-                date: `${currentBooking.date.split(' to ')[0]} to ${newEndDate}`,
-                cost: `₹${parseInt(currentBooking.cost?.replace('₹', '') || 0) + data.additionalCost}`,
+                id: targetBooking.id,
+                date: `${(targetBooking.date || '').split(' to ')[0]} to ${newEndDate}`,
+                cost: `₹${parseInt((targetBooking.cost || '0').replace('₹', '') || 0) + (data.additionalCost || 0)}`,
                 status: 'Extended'
             });
         }
         setIsExtendOpen(false);
+        setBookingToExtend(null);
     };
 
     const renderDocuments = () => (
@@ -658,7 +683,7 @@ Thank you for choosing Wheelio!
                                     <AlertTriangle size={18} /> Payment Pending: Damage Repair
                                 </h4>
                                 <p className="text-gray-300 text-sm mb-2">{report.description}</p>
-                                <div className="text-xs text-gray-500">Incident reported on {new Date(report.createdAt || report.submittedAt).toLocaleDateString()}</div>
+                                <div className="text-xs text-gray-500">Incident reported on {new Date(report.createdAt).toLocaleDateString()}</div>
                             </div>
                             <div className="flex flex-col items-end justify-center min-w-[200px]">
                                 <div className="text-2xl font-bold text-white mb-2">₹{report.estimatedCost}</div>
@@ -705,8 +730,10 @@ Thank you for choosing Wheelio!
         { id: 'overview', label: 'Overview', icon: LayoutDashboard },
         { id: 'notifications', label: 'Notifications', icon: Bell },
         { id: 'bookings', label: 'My Rides', icon: Car },
+        { id: 'damage-reports', label: 'My Reports', icon: AlertTriangle, badge: userDamageReports.filter(r => r.status === 'ESTIMATED').length || null },
         { id: 'documents', label: 'Documents', icon: FileText },
         { id: 'billing', label: 'Billing', icon: CreditCard },
+        { id: 'damage-report', label: 'Report Damage', icon: AlertTriangle },
         { id: 'profile', label: 'Profile', icon: User },
     ];
 
@@ -763,14 +790,25 @@ Thank you for choosing Wheelio!
                         {menuItems.map((item) => (
                             <button
                                 key={item.id}
-                                onClick={() => setActiveTab(item.id)}
+                                onClick={() => {
+                                    if (item.id === 'damage-report') {
+                                        onNavigate('damage-report');
+                                    } else {
+                                        handleTabChange(item.id);
+                                    }
+                                }}
                                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium ${activeTab === item.id
                                     ? 'bg-primary text-black shadow-lg shadow-primary/20'
                                     : 'text-gray-400 hover:text-white hover:bg-white/5'
                                     }`}
                             >
                                 <item.icon size={20} />
-                                {item.label}
+                                <span className="flex-1 text-left">{item.label}</span>
+                                {item.badge > 0 && (
+                                    <span className="ml-auto bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center">
+                                        {item.badge}
+                                    </span>
+                                )}
                             </button>
                         ))}
                     </div>
@@ -933,6 +971,86 @@ Thank you for choosing Wheelio!
                         </div>
                     )}
 
+                    {/* MY REPORTS TAB - Damage Reports with payment */}
+                    {activeTab === 'damage-reports' && (
+                        <div className="space-y-6 animate-in slide-in-from-right duration-300">
+                            <div className="flex justify-between items-center">
+                                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                                    <AlertTriangle className="text-yellow-500" /> My Damage Reports
+                                </h2>
+                                <button
+                                    onClick={fetchDamageReports}
+                                    disabled={isFetchingReports}
+                                    className="px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors text-sm font-bold"
+                                >
+                                    {isFetchingReports ? '⏳' : '🔄 Refresh'}
+                                </button>
+                            </div>
+
+                            {isFetchingReports ? (
+                                <div className="text-gray-400 text-center py-10">Loading reports...</div>
+                            ) : userDamageReports.length === 0 ? (
+                                <div className="bg-secondary/20 border border-white/5 rounded-3xl p-12 text-center text-gray-400">
+                                    <AlertTriangle size={48} className="mx-auto mb-4 text-gray-600" />
+                                    <h3 className="text-xl font-bold text-white mb-2">No Damage Reports</h3>
+                                    <p>You have not submitted any damage reports yet.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {userDamageReports.map((report) => (
+                                        <div key={report.id} className="bg-secondary/20 border border-white/5 rounded-2xl p-6 hover:border-primary/20 transition-all">
+                                            <div className="flex justify-between items-start mb-3">
+                                                <div>
+                                                    <h4 className="font-bold text-white text-lg">Report #{String(report.id).slice(0, 8)}</h4>
+                                                    <p className="text-xs text-gray-500 mt-0.5">
+                                                        Vehicle: {report.vehicle?.name || 'N/A'} &bull; {report.createdAt ? new Date(report.createdAt).toLocaleDateString() : 'N/A'}
+                                                    </p>
+                                                </div>
+                                                <span className={`text-xs px-3 py-1 rounded-full font-bold uppercase ${report.status === 'PAID' ? 'bg-green-500/20 text-green-400' :
+                                                    report.status === 'ESTIMATED' ? 'bg-orange-500/20 text-orange-400' :
+                                                        report.status === 'RESOLVED' ? 'bg-blue-500/20 text-blue-400' :
+                                                            'bg-yellow-500/20 text-yellow-400'
+                                                    }`}>
+                                                    {report.status}
+                                                </span>
+                                            </div>
+
+                                            <p className="text-sm text-gray-300 mb-4 bg-white/5 p-3 rounded-xl">{report.description}</p>
+
+                                            {report.estimatedCost && Number(report.estimatedCost) > 0 ? (
+                                                <div className="p-4 bg-orange-500/10 border border-orange-500/30 rounded-xl">
+                                                    <p className="text-xs text-orange-400 uppercase font-bold mb-1 flex items-center gap-1">
+                                                        ⚠ Damage Cost Estimate Received
+                                                    </p>
+                                                    <div className="text-3xl font-bold text-white mb-2">₹{Number(report.estimatedCost).toLocaleString()}</div>
+
+                                                    {report.status !== 'PAID' ? (
+                                                        <button
+                                                            onClick={() => handlePayDamage(report.id, report.estimatedCost)}
+                                                            className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold py-3 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 text-base"
+                                                        >
+                                                            <CreditCard size={18} />
+                                                            Pay Now — ₹{Number(report.estimatedCost).toLocaleString()}
+                                                        </button>
+                                                    ) : (
+                                                        <div className="w-full bg-green-500/10 text-green-400 font-bold py-3 rounded-xl border border-green-500/20 flex items-center justify-center gap-2">
+                                                            <CheckCircle size={18} />
+                                                            Payment Complete
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div className="p-3 bg-white/5 border border-white/10 rounded-xl text-sm text-gray-400 text-center">
+                                                    ⏳ Awaiting admin review and cost estimation...
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* BOOKINGS TAB */}
                     {activeTab === 'bookings' && (
                         <div className="space-y-6 animate-in slide-in-from-right duration-300">
@@ -940,20 +1058,26 @@ Thank you for choosing Wheelio!
                             <div className="space-y-4">
                                 {allBookings.map((booking, i) => (
                                     <div key={i} className="bg-secondary/20 border border-white/5 rounded-2xl p-4 flex flex-col md:flex-row items-center gap-6 hover:bg-secondary/30 transition-colors">
-                                        <div className="w-full md:w-32 h-24 rounded-xl overflow-hidden shrink-0">
-                                            <img src={booking.image} alt={booking.vehicle} className="w-full h-full object-cover" />
+                                        <div className="w-full md:w-32 h-24 rounded-xl overflow-hidden shrink-0 bg-black/30 flex items-center justify-center">
+                                            {booking.image
+                                                ? <img src={booking.image} alt={booking.vehicle} className="w-full h-full object-cover" />
+                                                : <Car size={32} className="text-gray-600" />}
                                         </div>
                                         <div className="flex-1 w-full text-center md:text-left">
                                             <h4 className="text-lg font-bold text-white">{booking.vehicle}</h4>
-                                            <div className="text-gray-400 text-sm mt-1">{booking.date}</div>
+                                            <div className="text-gray-400 text-sm mt-1 flex items-center gap-1 justify-center md:justify-start">
+                                                <Calendar size={13} />{booking.date}
+                                            </div>
+                                            <div className="text-xl font-bold text-primary mt-1">{booking.cost}</div>
                                         </div>
-                                        <div className="text-right flex flex-row md:flex-col justify-between w-full md:w-auto items-center md:items-end">
-                                            <div className="text-xl font-bold text-primary">{booking.cost}</div>
-                                            <div className="flex flex-col items-end gap-2 mt-1">
-                                                <span className={`px-3 py-1 rounded-lg text-xs font-medium border ${booking.status === 'Completed' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-white/5 text-gray-400 border-white/10'}`}>
-                                                    {booking.status}
-                                                </span>
-                                                {booking.status === 'Completed' && !booking.isReviewed && (
+                                        <div className="flex flex-col items-end gap-2 w-full md:w-auto">
+                                            <span className={`px-3 py-1 rounded-lg text-xs font-bold border uppercase ${booking.status === 'Completed' || booking.status === 'COMPLETED' ? 'bg-green-500/10 text-green-500 border-green-500/20' : booking.status === 'CONFIRMED' ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' : booking.status === 'CANCELLED' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'}`}>
+                                                {booking.status}
+                                            </span>
+                                            {/* Action buttons */}
+                                            <div className="flex gap-2 flex-wrap justify-end">
+
+                                                {(booking.status === 'Completed' || booking.status === 'COMPLETED') && !booking.isReviewed && (
                                                     <button
                                                         onClick={() => handleOpenReview(booking)}
                                                         className="text-xs bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg border border-primary/20 transition-colors font-bold"
@@ -1054,9 +1178,9 @@ Thank you for choosing Wheelio!
 
             <ExtendTripDialog
                 isOpen={isExtendOpen}
-                onClose={() => setIsExtendOpen(false)}
+                onClose={() => { setIsExtendOpen(false); setBookingToExtend(null); }}
                 onConfirm={handleConfirmExtend}
-                currentEndDate={String(activeRental?.dates || 'Today')}
+                currentEndDate={String(bookingToExtend?.date?.split(' to ')[1] || activeRental?.dates || 'Today')}
             />
 
             <ReviewDialog

@@ -1,17 +1,19 @@
 package com.wheelio.backend.repository;
 
 import com.wheelio.backend.model.DriverProfile;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
+
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Repository
-public interface DriverProfileRepository extends JpaRepository<DriverProfile, UUID> {
-    Optional<DriverProfile> findByUserId(UUID userId);
+public interface DriverProfileRepository extends MongoRepository<DriverProfile, String> {
+    Optional<DriverProfile> findByUserId(String userId);
 
-    List<DriverProfile> findByStatus(DriverProfile.DriverStatus status);
+    List<DriverProfile> findByStatus(String status);
 
-    List<DriverProfile> findByUser_CityAndStatus(String city, DriverProfile.DriverStatus status);
+    Optional<DriverProfile> findByLicenseNumber(String licenseNumber);
+
+    boolean existsByUserId(String userId);
 }
