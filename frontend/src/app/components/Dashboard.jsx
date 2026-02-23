@@ -297,7 +297,7 @@ const Dashboard = ({ onNavigate, user, bookings = [], onUpdateBooking, onCancelB
                     name: 'Wheelio',
                     description: 'Damage Report Payment',
                     image: '/logo.png',
-                    theme: { color: '#00e5ff' },
+                    theme: { color: '#06b6d4' },
                     prefill: {
                         name: user?.name || '',
                         email: user?.email || '',
@@ -884,6 +884,7 @@ const Dashboard = ({ onNavigate, user, bookings = [], onUpdateBooking, onCancelB
         { id: 'overview', label: 'Overview', icon: LayoutDashboard },
         { id: 'notifications', label: 'Notifications', icon: Bell },
         { id: 'bookings', label: 'My Rides', icon: Car },
+        { id: 'hosted-vehicles', label: 'My Vehicles', icon: Car },
         { id: 'damage-reports', label: 'My Reports', icon: AlertTriangle, badge: userDamageReports.filter(r => r.status === 'ESTIMATED').length || null },
         { id: 'documents', label: 'Documents', icon: FileText },
         { id: 'billing', label: 'Billing', icon: CreditCard },
@@ -1072,9 +1073,6 @@ const Dashboard = ({ onNavigate, user, bookings = [], onUpdateBooking, onCancelB
                                     </button>
                                 </div>
                             )}
-
-                            {/* Hosted Vehicles Section in Overview */}
-                            {user?.email && renderHostedVehicles()}
 
                             {/* Damage Reports Section - Overview */}
                             {userDamageReports.length > 0 && (
@@ -1319,6 +1317,9 @@ const Dashboard = ({ onNavigate, user, bookings = [], onUpdateBooking, onCancelB
 
                     {/* BILLING TAB */}
                     {activeTab === 'billing' && renderBilling()}
+
+                    {/* HOSTED VEHICLES TAB */}
+                    {activeTab === 'hosted-vehicles' && renderHostedVehicles()}
                 </div>
             </div>
 
