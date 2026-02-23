@@ -42,6 +42,7 @@ const ExtendTripDialog = ({ isOpen, onClose, onConfirm, currentEndDate }) => {
                     currency: 'INR',
                     name: 'Wheelio Rentals',
                     description: `Extend Trip by ${days} day${days > 1 ? 's' : ''}`,
+                    image: '/logo.png',
                     theme: { color: '#06b6d4' },
                     handler: function (response) {
                         // Payment successful

@@ -22,11 +22,15 @@ export function ForgotPasswordDialog({ open, onOpenChange }) {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const { forgotPassword } = await import("../../api/auth");
+      await forgotPassword(email);
       setIsSubmitted(true);
+    } catch (error) {
+      console.error("Forgot password error:", error);
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   const handleClose = () => {

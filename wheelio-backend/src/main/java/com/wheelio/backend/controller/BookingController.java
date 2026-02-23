@@ -34,6 +34,9 @@ public class BookingController {
     @Autowired
     private VehicleService vehicleService;
 
+    @Autowired
+    private com.wheelio.backend.service.EmailService emailService;
+
     @GetMapping
     public List<Booking> getAllBookings() {
         return bookingService.getAllBookings();
@@ -83,6 +86,15 @@ public class BookingController {
             Vehicle vehicle = vehicleOpt.get();
             var user = userOpt.get();
 
+            LocalDateTime startTime = parseFlexibleDate(request.getStartDate());
+            LocalDateTime endTime = parseFlexibleDate(request.getEndDate());
+
+            // Validate vehicle availability
+            if (!bookingService.isVehicleAvailable(request.getVehicleId(), startTime, endTime)) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(Map.of("error", "Vehicle is already booked for the selected period."));
+            }
+
             Booking booking = new Booking();
             booking.setUserId(request.getUserId());
             booking.setUserName(user.getFullName());
@@ -99,8 +111,8 @@ public class BookingController {
                 booking.setDriverId(request.getDriverId());
             }
 
-            booking.setStartDate(parseFlexibleDate(request.getStartDate()));
-            booking.setEndDate(parseFlexibleDate(request.getEndDate()));
+            booking.setStartDate(startTime);
+            booking.setEndDate(endTime);
             booking.setTotalAmount(request.getTotalAmount());
             booking.setPickupLocation(request.getPickupLocation());
             booking.setDropLocation(request.getDropLocation());
@@ -111,6 +123,20 @@ public class BookingController {
 
             Booking saved = bookingService.createBooking(booking);
             logger.info("Booking created: {}", saved.getId());
+
+            // Update Vehicle Status to BOOKED
+            vehicle.setStatus(Vehicle.Status.BOOKED);
+            vehicleService.updateVehicle(vehicle);
+
+            // Send Confirmation Email
+            try {
+                String emailBody = com.wheelio.backend.util.EmailTemplates
+                        .getBookingConfirmationEmail(user.getFullName(), saved);
+                emailService.sendHtmlEmail(user.getEmail(), "Wheelio - Booking Confirmed #" + saved.getId(), emailBody);
+            } catch (Exception mailErr) {
+                logger.error("Failed to send booking confirmation email: {}", mailErr.getMessage());
+            }
+
             return ResponseEntity.ok(saved);
         } catch (Exception e) {
             logger.error("Booking creation failed: {}", e.getMessage(), e);
@@ -143,7 +169,17 @@ public class BookingController {
         return bookingService.getBookingById(id)
                 .map(booking -> {
                     if (request.containsKey("bookingStatus")) {
-                        booking.setStatus(Booking.BookingStatus.valueOf(request.get("bookingStatus")));
+                        Booking.BookingStatus newStatus = Booking.BookingStatus.valueOf(request.get("bookingStatus"));
+                        booking.setStatus(newStatus);
+
+                        // If booking is COMPLETED or CANCELLED, make vehicle AVAILABLE again
+                        if (newStatus == Booking.BookingStatus.COMPLETED
+                                || newStatus == Booking.BookingStatus.CANCELLED) {
+                            vehicleService.getVehicleById(booking.getVehicleId()).ifPresent(v -> {
+                                v.setStatus(Vehicle.Status.AVAILABLE);
+                                vehicleService.updateVehicle(v);
+                            });
+                        }
                     }
                     if (request.containsKey("paymentStatus")) {
                         booking.setPaymentStatus(Booking.PaymentStatus.valueOf(request.get("paymentStatus")));
@@ -159,9 +195,35 @@ public class BookingController {
                 .map(booking -> {
                     booking.setStatus(Booking.BookingStatus.CANCELLED);
                     bookingService.updateBooking(booking);
+
+                    // Make vehicle AVAILABLE again
+                    vehicleService.getVehicleById(booking.getVehicleId()).ifPresent(v -> {
+                        v.setStatus(Vehicle.Status.AVAILABLE);
+                        vehicleService.updateVehicle(v);
+                    });
+
                     return ResponseEntity.ok(Map.of("message", "Booking cancelled successfully"));
                 })
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/vehicle/{vehicleId}/booked-dates")
+    public List<Map<String, Object>> getBookedDatesByVehicle(@PathVariable String vehicleId) {
+        List<Booking.BookingStatus> activeStatuses = List.of(Booking.BookingStatus.PENDING,
+                Booking.BookingStatus.CONFIRMED);
+        List<Booking> activeBookings = bookingService.getBookingsByVehicleId(vehicleId).stream()
+                .filter(b -> activeStatuses.contains(b.getStatus()))
+                .toList();
+
+        return activeBookings.stream()
+                .map(b -> {
+                    Map<String, Object> map = new java.util.HashMap<>();
+                    map.put("startDate", b.getStartDate());
+                    map.put("endDate", b.getEndDate());
+                    map.put("status", b.getStatus());
+                    return map;
+                })
+                .toList();
     }
 
     // DTO

@@ -54,4 +54,9 @@ public class UserServiceImpl implements UserService {
     public boolean existsByEmail(String email) {
         return userRepository.existsByEmail(email);
     }
+
+    @Override
+    public Optional<User> getUserByResetToken(String token) {
+        return userRepository.findByResetToken(token);
+    }
 }

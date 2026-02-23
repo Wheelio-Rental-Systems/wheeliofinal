@@ -27,22 +27,25 @@ public class Vehicle {
     private VehicleType type;
 
     private BigDecimal pricePerDay;
-
     private String location;
-
     private Status status = Status.AVAILABLE;
-
     private String imageUrl;
-
     private List<String> features;
-
     private String description;
+
+    // Additional fields for frontend compatibility
+    private Integer seats;
+    private String fuelType;
+    private String transmission;
+    private Double rating;
+    private Integer reviews;
+    private java.util.Map<String, String> details;
 
     @CreatedDate
     private LocalDateTime createdAt;
 
     public enum VehicleType {
-        SUV, SEDAN, BIKE, HATCHBACK, MPV, SCOOTER
+        SUV, SEDAN, BIKE, HATCHBACK, MPV, SCOOTER, CAR
     }
 
     public enum Status {

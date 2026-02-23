@@ -56,13 +56,19 @@ const Login = ({ onNavigate, onLogin }) => {
         }
     };
 
-    const handleResetSubmit = (e) => {
+    const handleResetSubmit = async (e) => {
         e.preventDefault();
         setIsLoading(true);
-        setTimeout(() => {
-            setIsLoading(false);
+        try {
+            await authAPI.forgotPassword(email);
             setResetLinkSent(true);
-        }, 1500);
+        } catch (error) {
+            console.error('Reset password error:', error);
+            const errorMessage = error.response?.data?.error || 'Failed to send reset link. Please try again.';
+            toast.error(errorMessage);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleSocialLogin = (provider) => {

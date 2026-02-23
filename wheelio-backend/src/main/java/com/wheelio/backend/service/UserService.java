@@ -20,4 +20,6 @@ public interface UserService {
     void deleteUser(String id);
 
     boolean existsByEmail(String email);
+
+    Optional<User> getUserByResetToken(String token);
 }

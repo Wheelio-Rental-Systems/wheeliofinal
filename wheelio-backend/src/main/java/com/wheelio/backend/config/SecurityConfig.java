@@ -28,7 +28,8 @@ public class SecurityConfig {
                 System.out.println("--- Loading SecurityConfig WebSecurityCustomizer ---");
                 return (web) -> web.ignoring()
                                 .requestMatchers("/api/health", "/api/vehicles", "/api/vehicles/**", "/api/auth/signup",
-                                                "/api/auth/login", "/api/auth/me", "/api/damage-reports",
+                                                "/api/auth/login", "/api/auth/me", "/api/auth/forgot-password",
+                                                "/api/auth/reset-password", "/api/damage-reports",
                                                 "/api/damage-reports/**",
                                                 "/api/bookings", "/api/bookings/**", "/api/users", "/api/users/**",
                                                 "/api/files", "/api/files/**",

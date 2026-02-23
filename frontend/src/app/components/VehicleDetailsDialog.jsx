@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import {
   Star, Users, Gauge, Fuel, MapPin, Shield, Award, CheckCircle,
-  X, Calendar, ChevronRight, Info
+  X, Calendar as CalendarIcon, ChevronRight, Info
 } from "lucide-react";
 import { Badge } from "./ui/badge";
+import { getBookedDates } from '../api/bookings';
 
 export function VehicleDetailsDialog({
   open,
@@ -14,13 +15,29 @@ export function VehicleDetailsDialog({
   const [activeTab, setActiveTab] = useState('specifications');
   const [rentalDays, setRentalDays] = useState(1);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [bookedDates, setBookedDates] = useState([]);
+  const isBooked = (vehicle?.status || 'AVAILABLE').toUpperCase() !== 'AVAILABLE';
 
   // Sync selected image when vehicle changes
   React.useEffect(() => {
     if (vehicle) {
       setSelectedImage(vehicle.image);
+      if (isBooked) {
+        getBookedDates(vehicle.id).then(dates => {
+          const sorted = dates.sort((a, b) => new Date(b.endDate) - new Date(a.endDate));
+          setBookedDates(sorted);
+        }).catch(err => console.error("Error fetching booked dates:", err));
+      }
     }
-  }, [vehicle]);
+  }, [vehicle, isBooked]);
+
+  const getNextAvailableDate = () => {
+    if (bookedDates.length === 0) return null;
+    const latest = bookedDates[0];
+    const date = new Date(latest.endDate);
+    date.setDate(date.getDate() + 1);
+    return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  };
 
   if (!vehicle || !open) return null;
 
@@ -147,8 +164,10 @@ export function VehicleDetailsDialog({
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
               />
               <div className="absolute top-4 left-4">
-                <Badge className={vehicle.status === 'available' ? 'bg-green-500 text-black' : 'bg-red-500 text-white'}>
-                  {vehicle.status === 'available' ? 'Available' : 'Booked'}
+                <Badge className={(vehicle.status || 'AVAILABLE').toUpperCase() === 'AVAILABLE' ? 'bg-green-500 text-black' : 'bg-red-500 text-white'}>
+                  {(vehicle.status || 'AVAILABLE').toUpperCase() === 'AVAILABLE'
+                    ? 'Available'
+                    : `Booked ${getNextAvailableDate() ? `until ${getNextAvailableDate()}` : ''}`}
                 </Badge>
               </div>
             </div>
@@ -320,14 +339,17 @@ export function VehicleDetailsDialog({
             {/* Sticky Footer Action Button */}
             <div className="p-6 md:p-8 border-t border-white/10 bg-[#151520] z-20 shadow-[-10px_0_20px_rgba(0,0,0,0.5)]">
               <button
+                disabled={isBooked}
                 onClick={() => {
                   console.log("Book Now Clicked for:", vehicle.name);
                   if (onBook) onBook();
                   else console.error("onBook function is missing!");
                 }}
-                className="w-full bg-primary hover:bg-primary/90 text-black font-bold py-4 rounded-xl shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2 active:scale-95 relative z-50 cursor-pointer"
+                className={`w-full font-bold py-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 relative z-50 ${!isBooked ? 'bg-primary hover:bg-primary/90 text-black shadow-primary/20 cursor-pointer' : 'bg-gray-700 text-gray-400 cursor-not-allowed'}`}
               >
-                Book Now
+                {!isBooked
+                  ? 'Book Now'
+                  : `Already Booked ${getNextAvailableDate() ? `until ${getNextAvailableDate()}` : ''}`}
                 <ChevronRight size={20} />
               </button>
 

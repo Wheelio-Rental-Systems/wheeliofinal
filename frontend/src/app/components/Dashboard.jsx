@@ -36,26 +36,34 @@ const Dashboard = ({ onNavigate, user, bookings = [], onUpdateBooking, onCancelB
     };
     const [hostedVehicles, setHostedVehicles] = useState([]);
     const [profileData, setProfileData] = useState({
-        name: user?.name || '',
-        phone: '+91 ',
-        city: 'Coimbatore',
+        name: user?.name || user?.fullName || '',
+        phone: user?.phone || '',
+        city: user?.city || '',
         documents: {}
     });
 
-    const [profileImage, setProfileImage] = useState(() => {
-        return localStorage.getItem('userProfileImage') || null;
-    });
+    const [profileImage, setProfileImage] = useState(user?.avatarUrl || null);
 
-    const handleProfileImageUpload = (event) => {
+    const handleProfileImageUpload = async (event) => {
         const file = event.target.files[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                const result = reader.result;
-                setProfileImage(result);
-                localStorage.setItem('userProfileImage', result);
-            };
-            reader.readAsDataURL(file);
+            try {
+                const uploadResult = await import('../../api/files').then(m => m.uploadFile(file));
+                const fileUrl = `/api/files/${uploadResult.fileId}`;
+
+                setProfileImage(fileUrl);
+
+                if (user?.id) {
+                    await import('../../api/users').then(m => m.updateUser(user.id, { avatarUrl: fileUrl }));
+                    if (onUpdateUser) {
+                        onUpdateUser({ avatarUrl: fileUrl });
+                    }
+                    toast.success("Profile picture updated!");
+                }
+            } catch (err) {
+                console.error("Profile image upload failed:", err);
+                toast.error("Failed to upload profile picture.");
+            }
         }
     };
 
@@ -63,9 +71,9 @@ const Dashboard = ({ onNavigate, user, bookings = [], onUpdateBooking, onCancelB
         if (user) {
             setProfileData(prev => ({
                 ...prev,
-                name: user.name || '',
-                phone: user.phone || '+91 ',
-                city: user.city || 'Coimbatore'
+                name: user.name || user.fullName || '',
+                phone: user.phone || '',
+                city: user.city || ''
             }));
         }
     }, [user]);
@@ -98,49 +106,100 @@ const Dashboard = ({ onNavigate, user, bookings = [], onUpdateBooking, onCancelB
         }
     };
 
-    const [documents, setDocuments] = useState(() => {
-        try {
-            const saved = localStorage.getItem('userDocuments');
-            return saved ? JSON.parse(saved) : {
-                license: { status: 'Pending', url: null, number: '', expiry: '' },
-                aadhaar: { status: 'Pending', url: null, number: '', expiry: '' }
-            };
-        } catch (e) {
-            return {
-                license: { status: 'Pending', url: null, number: '', expiry: '' },
-                aadhaar: { status: 'Pending', url: null, number: '', expiry: '' }
-            };
-        }
+    const [documents, setDocuments] = useState({
+        license: { status: 'Pending', url: null, number: '', expiry: '' },
+        aadhaar: { status: 'Pending', url: null, number: '', expiry: '' }
     });
 
-    useEffect(() => {
-        localStorage.setItem('userDocuments', JSON.stringify(documents));
-    }, [documents]);
+    const [isDocumentsLoading, setIsDocumentsLoading] = useState(false);
 
-    const handleFileUpload = (type, event) => {
+    useEffect(() => {
+        const fetchDriverDocs = async () => {
+            if (user?.id) {
+                setIsDocumentsLoading(true);
+                try {
+                    const profile = await import('../../api/drivers').then(m => m.getDriverProfile(user.id));
+                    if (profile && profile.documents) {
+                        const newDocs = { ...documents };
+                        if (profile.documents.license) {
+                            newDocs.license = { ...newDocs.license, status: 'Uploaded', url: profile.documents.license };
+                        }
+                        if (profile.documents.aadhaar) {
+                            newDocs.aadhaar = { ...newDocs.aadhaar, status: 'Uploaded', url: profile.documents.aadhaar };
+                        }
+                        setDocuments(newDocs);
+                    }
+                } catch (err) {
+                    console.log("No driver profile or error fetching docs", err);
+                } finally {
+                    setIsDocumentsLoading(false);
+                }
+            }
+        };
+        fetchDriverDocs();
+    }, [user]);
+
+    const handleFileUpload = async (type, event) => {
         const file = event.target.files[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
+            try {
+                // 1. Upload file to backend
+                const uploadResult = await import('../../api/files').then(m => m.uploadFile(file));
+                const fileUrl = `/api/files/${uploadResult.fileId}`; // Assuming backend serving logic
+
+                // 2. Update local state for immediate feedback
                 setDocuments(prev => ({
                     ...prev,
                     [type]: {
                         ...prev[type],
                         status: 'Uploaded',
-                        url: reader.result,
+                        url: fileUrl,
                         fileName: file.name
                     }
                 }));
-            };
-            reader.readAsDataURL(file);
+
+                // 3. Update DriverProfile on backend
+                if (user?.id) {
+                    const currentProfile = await import('../../api/drivers').then(m => m.getDriverProfile(user.id)).catch(() => ({ documents: {} }));
+                    const backendDocs = {
+                        ...(currentProfile.documents || {}),
+                        [type]: fileUrl
+                    };
+
+                    const profileUpdates = {
+                        status: 'VERIFYING',
+                        documents: backendDocs
+                    };
+                    await import('../../api/drivers').then(m => m.updateDriverProfile(user.id, profileUpdates));
+                    toast.success(`${type} uploaded and waiting for verification.`);
+                }
+            } catch (err) {
+                console.error('Upload failed:', err);
+                toast.error(`Failed to upload ${type}.`);
+            }
         }
     };
 
-    const removeDocument = (type) => {
+    const removeDocument = async (type) => {
         setDocuments(prev => ({
             ...prev,
             [type]: { ...prev[type], status: 'Pending', url: null, fileName: '' }
         }));
+
+        if (user?.id) {
+            try {
+                const currentProfile = await import('../../api/drivers').then(m => m.getDriverProfile(user.id)).catch(() => ({ documents: {} }));
+                const backendDocs = { ...(currentProfile.documents || {}) };
+                delete backendDocs[type];
+
+                await import('../../api/drivers').then(m => m.updateDriverProfile(user.id, {
+                    documents: backendDocs
+                }));
+                toast.success(`${type} removed.`);
+            } catch (err) {
+                console.error("Failed to remove document on backend:", err);
+            }
+        }
     };
 
     const [userDamageReports, setUserDamageReports] = useState([]);
@@ -237,6 +296,7 @@ const Dashboard = ({ onNavigate, user, bookings = [], onUpdateBooking, onCancelB
                     currency: 'INR',
                     name: 'Wheelio',
                     description: 'Damage Report Payment',
+                    image: '/logo.png',
                     theme: { color: '#00e5ff' },
                     prefill: {
                         name: user?.name || '',
@@ -331,26 +391,120 @@ const Dashboard = ({ onNavigate, user, bookings = [], onUpdateBooking, onCancelB
     };
 
     const handleDownloadInvoice = (invoice) => {
-        const invoiceContent = `
-INVOICE #${invoice.id}
-Date: ${invoice.date}
-Vehicle: ${invoice.vehicle}
-Amount: ${invoice.amount}
-Status: ${invoice.status}
+        const amountStr = (invoice.amount || '0').replace('₹', '').replace(',', '');
+        const amount = parseFloat(amountStr) || 0;
+        const tax = amount * 0.18;
+        const total = amount + tax;
 
-Thank you for choosing Wheelio!
+        const invoiceHTML = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Invoice - ${invoice.id}</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #333; line-height: 1.6; padding: 40px; }
+        .invoice-box { max-width: 800px; margin: auto; padding: 30px; border: 1px solid #eee; box-shadow: 0 0 10px rgba(0, 0, 0, 0.15); border-radius: 10px; background: #fff; }
+        .header { display: flex; justify-content: space-between; border-bottom: 2px solid #00e5ff; padding-bottom: 20px; margin-bottom: 30px; }
+        .logo { font-size: 28px; font-weight: 800; color: #00e5ff; letter-spacing: 2px; }
+        .company-info { text-align: right; font-size: 13px; color: #666; }
+        .invoice-details { display: flex; justify-content: space-between; margin-bottom: 40px; }
+        .info-col h4 { margin: 0 0 10px 0; color: #00e5ff; text-transform: uppercase; font-size: 14px; }
+        .info-col p { margin: 0; font-size: 14px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
+        th { background: #f8f9fa; text-align: left; padding: 12px; border-bottom: 2px solid #eee; font-size: 14px; }
+        td { padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; }
+        .totals { margin-left: auto; width: 250px; }
+        .total-row { display: flex; justify-content: space-between; padding: 5px 0; }
+        .total-row.grand-total { border-top: 2px solid #00e5ff; margin-top: 10px; padding-top: 10px; font-weight: bold; font-size: 18px; color: #00e5ff; }
+        .footer { text-align: center; margin-top: 50px; border-top: 1px solid #eee; padding-top: 20px; font-size: 12px; color: #999; }
+        @media print { .invoice-box { box-shadow: none; border: none; } .no-print { display: none; } }
+        .btn-print { background: #00e5ff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="no-print" style="text-align: right; max-width: 800px; margin: auto;">
+        <button class="btn-print" onclick="window.print()">Print to PDF</button>
+    </div>
+    <div class="invoice-box">
+        <div class="header">
+            <div class="logo">WHEELIO</div>
+            <div class="company-info">
+                <strong>Wheelio Vehicle Rental Systems</strong><br>
+                123 Avinashi Road, Peelamedu<br>
+                Coimbatore, Tamil Nadu 641004<br>
+                GSTIN: 33AAAAA0000A1Z5
+            </div>
+        </div>
+
+        <div class="invoice-details">
+            <div class="info-col">
+                <h4>Bill To:</h4>
+                <p><strong>${user?.name || 'Customer'}</strong></p>
+                <p>${user?.email || ''}</p>
+                <p>${user?.phone || ''}</p>
+            </div>
+            <div class="info-col" style="text-align: right;">
+                <h4>Invoice:</h4>
+                <p><strong>#${invoice.id}</strong></p>
+                <p>Date: ${invoice.date}</p>
+                <p>Status: <span style="color: ${invoice.status === 'Paid' ? '#10b981' : '#ef4444'}">${invoice.status}</span></p>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th style="text-align: center;">Qty</th>
+                    <th style="text-align: right;">Rate</th>
+                    <th style="text-align: right;">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Vehicle Rental: <strong>${invoice.vehicle}</strong></td>
+                    <td style="text-align: center;">1</td>
+                    <td style="text-align: right;">₹${amount.toLocaleString()}</td>
+                    <td style="text-align: right;">₹${amount.toLocaleString()}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="totals">
+            <div class="total-row">
+                <span>Subtotal:</span>
+                <span>₹${amount.toLocaleString()}</span>
+            </div>
+            <div class="total-row">
+                <span>GST (18%):</span>
+                <span>₹${tax.toLocaleString()}</span>
+            </div>
+            <div class="total-row grand-total">
+                <span>Total:</span>
+                <span>₹${total.toLocaleString()}</span>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>This is a computer-generated invoice and no signature is required.</p>
+            <p>Thank you for choosing Wheelio. Drive safe!</p>
+        </div>
+    </div>
+</body>
+</html>
         `.trim();
 
-        const blob = new Blob([invoiceContent], { type: 'text/plain' });
+        const blob = new Blob([invoiceHTML], { type: 'text/html' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${invoice.id}.txt`;
+        a.download = `NEW_Invoice_${invoice.id}.html`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
-        toast.success(`Invoice ${invoice.id} downloaded`);
+        toast.success(`Formal Invoice ${invoice.id} downloaded`);
     };
 
     const handleConfirmExtend = (data) => {

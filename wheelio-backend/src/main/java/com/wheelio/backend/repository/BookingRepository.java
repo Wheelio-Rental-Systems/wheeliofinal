@@ -19,4 +19,10 @@ public interface BookingRepository extends MongoRepository<Booking, String> {
     List<Booking> findByUserIdOrderByCreatedAtDesc(String userId);
 
     List<Booking> findByDriverIdOrderByCreatedAtDesc(String driverId);
+
+    List<Booking> findByVehicleIdAndStatusIn(String vehicleId, List<Booking.BookingStatus> statuses);
+
+    @org.springframework.data.mongodb.repository.Query("{ 'vehicleId': ?0, 'status': { '$in': ?3 }, '$or': [ { 'startDate': { '$lt': ?2 }, 'endDate': { '$gt': ?1 } } ] }")
+    List<Booking> findOverlappingBookings(String vehicleId, java.time.LocalDateTime start, java.time.LocalDateTime end,
+            List<Booking.BookingStatus> statuses);
 }

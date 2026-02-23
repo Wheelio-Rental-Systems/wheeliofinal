@@ -43,6 +43,9 @@ public class User {
     @LastModifiedDate
     private LocalDateTime updatedAt;
 
+    private String resetToken;
+    private LocalDateTime resetTokenExpiry;
+
     public enum Role {
         ADMIN, DRIVER, USER, STAFF
     }

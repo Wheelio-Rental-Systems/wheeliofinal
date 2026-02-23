@@ -15,6 +15,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 
 // interface BecomeHostDialogProps removed (JS file)
 
+// List of cities for vehicle pickup
+const INDIAN_CITIES = [
+  "Bangalore",
+  "Chandigarh",
+  "Chennai",
+  "Coimbatore",
+  "Delhi",
+  "Goa",
+  "Hosur",
+  "Hyderabad",
+  "Jaipur",
+  "Kochi",
+  "Kolkata",
+  "Manali",
+  "Mumbai",
+  "Pune",
+  "Rishikesh"
+].sort();
+
 export function BecomeHostDialog({ open, onOpenChange }) {
   const [rcBook, setRcBook] = useState(null);
   const [rcPreview, setRcPreview] = useState("");
@@ -171,8 +190,19 @@ export function BecomeHostDialog({ open, onOpenChange }) {
               <div className="space-y-2">
                 <Label htmlFor="location">Pickup Location</Label>
                 <div className="relative">
-                  <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input id="location" placeholder="Enter full address" className="pl-10" required />
+                  <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
+                  <Select required>
+                    <SelectTrigger className="pl-10">
+                      <SelectValue placeholder="Select city" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INDIAN_CITIES.map((city) => (
+                        <SelectItem key={city} value={city}>
+                          {city}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 

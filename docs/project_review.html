@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wheelio Project Review & Technical Analysis</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --secondary: #64748b;
+            --bg: #f8fafc;
+            --text: #1e293b;
+            --card: #ffffff;
+            --accent: #f59e0b;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.6;
+            color: var(--text);
+            background-color: var(--bg);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: var(--card);
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+
+        h1 {
+            color: var(--primary);
+            border-bottom: 3px solid var(--primary);
+            padding-bottom: 10px;
+            font-size: 2.5rem;
+        }
+
+        h2 {
+            color: var(--primary);
+            margin-top: 30px;
+            border-left: 5px solid var(--primary);
+            padding-left: 15px;
+        }
+
+        h3 {
+            color: var(--secondary);
+            margin-top: 20px;
+        }
+
+        .tech-tag {
+            display: inline-block;
+            background: #e2e8f0;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin: 5px;
+            font-weight: 600;
+        }
+
+        .highlight-box {
+            background: #f1f5f9;
+            border-right: 4px solid var(--accent);
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .db-status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .db-mongo {
+            background: #dcfce7;
+            border: 1px solid #22c55e;
+            color: #166534;
+        }
+
+        .db-postgres {
+            background: #fee2e2;
+            border: 1px solid #ef4444;
+            color: #991b1b;
+        }
+
+        ul {
+            padding-left: 20px;
+        }
+
+        li {
+            margin-bottom: 10px;
+        }
+
+        .footer {
+            margin-top: 50px;
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--secondary);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Wheelio: Project Review</h1>
+        <p>A comprehensive technical analysis of the Wheelio Vehicle Rental System.</p>
+
+        <h2>1. Technical Stack Overview</h2>
+        <div>
+            <span class="tech-tag">React / Next.js</span>
+            <span class="tech-tag">Spring Boot 3.2.3</span>
+            <span class="tech-tag">Java 17</span>
+            <span class="tech-tag">MongoDB</span>
+            <span class="tech-tag">Maven</span>
+            <span class="tech-tag">Jenkins</span>
+            <span class="tech-tag">Docker</span>
+            <span class="tech-tag">JWT Security</span>
+        </div>
+
+        <h2>2. Database Status: Postgres or MongoDB?</h2>
+        <div class="highlight-box">
+            <p><strong>Current Status:</strong> The project has transitioned to a <strong>MongoDB-first</strong>
+                architecture.</p>
+
+            <div class="db-status db-mongo">
+                <strong>MongoDB (Active):</strong> All core entities (Users, Bookings, Vehicles, DriverProfiles,
+                DamageReports) are currently mapped to MongoDB collections using Spring Data MongoDB.
+            </div>
+
+            <div class="db-status db-postgres">
+                <strong>PostgreSQL (Legacy/Optional):</strong> While infrastructure (docker-compose) still contains
+                Postgres definitions, the application code has been migrated to MongoDB. No active JPA/Entity mappings
+                exist in the current primary backend.
+            </div>
+        </div>
+
+        <h2>3. CI/CD Architecture (Jenkins)</h2>
+        <p>The project utilizes <strong>Jenkins</strong> for automated build and integration processes. The
+            <code>Jenkinsfile</code> defines a multi-stage pipeline:
+        </p>
+        <ul>
+            <li><strong>Checkout:</strong> Robust Git fetching with manual configuration to handle high-latency
+                connections (increasing postBuffer).</li>
+            <li><strong>Backend Build:</strong> Compiles the Spring Boot application using
+                <code>mvn clean install</code>, skipping tests for speed during integration.
+            </li>
+            <li><strong>Frontend Build:</strong> Installs dependencies and builds the React application using
+                <code>npm run build</code>.
+            </li>
+            <li><strong>Artifact Archiving:</strong> Stores the resulting <code>.jar</code> and frontend assets for
+                deployment.</li>
+        </ul>
+
+        <h2>4. Core Project Components</h2>
+
+        <h3>A. Booking Life Cycle</h3>
+        <p>A sophisticated flow from vehicle discovery to rental completion. Key features include:</p>
+        <ul>
+            <li>Dynamic vehicle availability checks.</li>
+            <li>Integrated driver selection and assignment.</li>
+            <li>Real-time status updates (PENDING, CONFIRMED, COMPLETED).</li>
+        </ul>
+
+        <h3>B. Driver Ecosystem</h3>
+        <p>A dedicated module for driver interactions:</p>
+        <ul>
+            <li><strong>Secure Login:</strong> Role-based access control with JWT authentication.</li>
+            <li><strong>Dashboard:</strong> Real-time overview of assigned trips and earnings.</li>
+            <li><strong>Documentation:</strong> Secure upload and persistence of driver credentials.</li>
+        </ul>
+
+        <h3>C. Damage Reporting System</h3>
+        <p>An essential rental feature allowing drivers to report vehicle issues with:</p>
+        <ul>
+            <li>Detailed descriptions and photo uploads.</li>
+            <li>Admin-initiated cost estimation and approval flow.</li>
+            <li>Integrated payment processing for repair costs.</li>
+        </ul>
+
+        <h3>D. Real-time Notifications</h3>
+        <p>To enhance user and driver engagement, the system implements a real-time notification layer:</p>
+        <ul>
+            <li><strong>Live Alerts:</strong> Instant toast notifications for new bookings and status changes.</li>
+            <li><strong>Notification Center:</strong> A dedicated UI component for managing unread alerts with
+                persistence in MongoDB.</li>
+            <li><strong>Polling Mechanism:</strong> Backend-to-Frontend communication ensures data stays fresh without
+                page reloads.</li>
+        </ul>
+
+        <h2>5. Important Things to Explain</h2>
+        <div class="highlight-box">
+            <p>If explaining this project to a panel or client, focus on these unique architectural decisions and
+                functional highlights:</p>
+            <ul>
+                <li><strong>Microservices Readiness:</strong> While the current core is a monolith, the structure in
+                    <code>backend-microservices</code> shows a clear path toward a distributed architecture, allowing
+                    independent scaling of services like payments or booking.
+                </li>
+                <li><strong>Stateless Security:</strong> Using <strong>JWT (JSON Web Tokens)</strong> ensures the system
+                    remains scalable and works seamlessly across multiple backend instances. Authentication is handled
+                    via a <code>JwtRequestFilter</code>.</li>
+                <li><strong>Document-Oriented Data:</strong> The choice of MongoDB allows for flexible schema evolution.
+                    This is particularly useful for <strong>Damage Reports</strong> where data (descriptions, costs,
+                    photo URLs) can vary significantly.</li>
+                <li><strong>Automated Resilience (Jenkins):</strong> The pipeline is configured to handle
+                    network-constrained environments by tuning Git post-buffers, ensuring reliable builds even on
+                    volatile connections.</li>
+                <li><strong>End-to-End Payment Flow:</strong> The integration of <strong>Razorpay</strong> for damage
+                    report payments demonstrates a complete financial transaction lifecycle within the app.</li>
+            </ul>
+        </div>
+
+        <div class="footer">
+            Generated on February 20, 2026 | Wheelio Final Review
+        </div>
+    </div>
+</body>
+
+</html>

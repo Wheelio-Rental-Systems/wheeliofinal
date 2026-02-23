@@ -33,6 +33,8 @@ services:
       JWT_SECRET: wheelio_super_secret_key_for_jwt_token_generation_2024_very_long_key
       JWT_EXPIRATION: 86400000
       MONGO_URI: mongodb://mongo:27017/wheelio_db
+      GMAIL_USER: wheeliorentals@gmail.com
+      GMAIL_APP_PASSWORD: "epqf dutb tqsf zbkn"
     depends_on:
       - db
       - mongo

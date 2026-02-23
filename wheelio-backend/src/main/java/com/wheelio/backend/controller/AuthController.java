@@ -26,6 +26,9 @@ public class AuthController {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private com.wheelio.backend.service.EmailService emailService;
+
     @PostMapping("/signup")
     public ResponseEntity<?> signup(@RequestBody SignupRequest request) {
         if (userService.existsByEmail(request.getEmail())) {
@@ -138,6 +141,55 @@ public class AuthController {
             }
         }
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        System.out.println("FORGOT PASSWORD REQUEST FOR EMAIL: '" + email + "'");
+        Optional<User> userOpt = userService.getUserByEmail(email);
+
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            System.out.println("USER FOUND: " + user.getFullName() + " (ID: " + user.getId() + ")");
+            String token = java.util.UUID.randomUUID().toString();
+            user.setResetToken(token);
+            user.setResetTokenExpiry(java.time.LocalDateTime.now().plusHours(24));
+            userService.updateUser(user);
+            System.out.println("RESET TOKEN GENERATED AND SAVED: " + token);
+
+            String resetLink = "http://localhost:5173/reset-password?token=" + token;
+            String emailBody = com.wheelio.backend.util.EmailTemplates.getForgotPasswordEmail(user.getFullName(),
+                    resetLink);
+
+            System.out.println("SENDING EMAIL TO: " + email);
+            emailService.sendHtmlEmail(email, "Wheelio - Reset Your Password", emailBody);
+        } else {
+            System.out.println("USER NOT FOUND IN DB FOR EMAIL: '" + email + "'");
+        }
+
+        return ResponseEntity
+                .ok(Map.of("message", "If an account exists with that email, a reset link has been sent."));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> request) {
+        String token = request.get("token");
+        String newPassword = request.get("newPassword");
+
+        Optional<User> userOpt = userService.getUserByResetToken(token);
+        if (userOpt.isEmpty() || userOpt.get().getResetTokenExpiry().isBefore(java.time.LocalDateTime.now())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Invalid or expired reset token"));
+        }
+
+        User user = userOpt.get();
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setResetToken(null);
+        user.setResetTokenExpiry(null);
+        userService.updateUser(user);
+
+        return ResponseEntity.ok(Map.of("message", "Password has been reset successfully."));
     }
 
     private Map<String, Object> createUserResponse(User user) {

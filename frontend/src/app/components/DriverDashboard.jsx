@@ -21,7 +21,7 @@ const DriverDashboard = ({ onNavigate, user, onLogout, onUpdateUser }) => {
     const [stats, setStats] = useState({
         todayEarnings: 0,
         tripsToday: 0,
-        rating: user?.rating || 4.8,
+        rating: user?.rating || 0.0,
         onlineHours: '0'
     });
 
@@ -37,10 +37,10 @@ const DriverDashboard = ({ onNavigate, user, onLogout, onUpdateUser }) => {
         longTrips: true
     });
     const [bankDetails, setBankDetails] = useState({
-        holderName: user?.name || 'Vasigaran',
-        accountNumber: '**** **** **** 1234',
-        ifsc: 'HDFC0001234',
-        bankName: 'HDFC Bank'
+        holderName: user?.name || user?.fullName || '',
+        accountNumber: '',
+        ifsc: '',
+        bankName: ''
     });
 
     const toggleSection = (section) => {
@@ -96,6 +96,7 @@ const DriverDashboard = ({ onNavigate, user, onLogout, onUpdateUser }) => {
                     rawAmount: Number(b.totalAmount) || 0,
                     driverAllowance: `₹${driverAllowance.toLocaleString()}`, // Formatted allowance
                     createdAt: b.createdAt,
+                    rawStartDate: b.startDate,
                 };
             }).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
@@ -181,8 +182,8 @@ const DriverDashboard = ({ onNavigate, user, onLogout, onUpdateUser }) => {
                         )}
                     </div>
                     <div>
-                        <h3 className="font-bold text-white leading-tight">{user?.name || 'Staff User'}</h3>
-                        <p className="text-xs text-gray-400">ID: {user?.id ? `DRV-88${user.id}` : 'DRV-8821'}</p>
+                        <h3 className="font-bold text-white leading-tight">{user?.name || user?.fullName || 'Driver'}</h3>
+                        <p className="text-xs text-gray-400">ID: {user?.id ? `DRV-88${user.id.substring(user.id.length - 4)}` : 'DRV-NEW'}</p>
                     </div>
                 </div>
             </div>
@@ -400,9 +401,46 @@ const DriverDashboard = ({ onNavigate, user, onLogout, onUpdateUser }) => {
                             </div>
                         </div>
                         {trip.status === 'CONFIRMED' && (
-                            <div className="mt-4 pt-4 border-t border-white/5 flex gap-3">
-                                <Button className="flex-1 bg-primary text-black hover:bg-cyan-400">Start Trip</Button>
-                                {trip.phone && <Button variant="secondary" className="bg-white/5 hover:bg-white/10 text-white"><Phone size={14} className="mr-2" /> Call</Button>}
+                            <div className="mt-4 pt-4 border-t border-white/10">
+                                {(() => {
+                                    const today = new Date();
+                                    today.setHours(0, 0, 0, 0);
+                                    const start = new Date(trip.rawStartDate);
+                                    start.setHours(0, 0, 0, 0);
+                                    const diffTime = start - today;
+                                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                                    let statusText = "";
+                                    let statusColor = "text-primary";
+
+                                    if (diffDays > 1) {
+                                        statusText = `${diffDays} days to go for trip`;
+                                    } else if (diffDays === 1) {
+                                        statusText = "1 day to go for trip";
+                                    } else if (diffDays === 0) {
+                                        statusText = "Trip starts today";
+                                        statusColor = "text-green-400";
+                                    } else {
+                                        statusText = "Trip in progress";
+                                        statusColor = "text-blue-400";
+                                    }
+
+                                    return (
+                                        <div className={`w-full py-4 bg-white/5 rounded-xl border border-white/5 flex items-center justify-center gap-2 ${statusColor} font-bold text-lg shadow-[0_0_15px_rgba(255,255,255,0.02)]`}>
+                                            <Clock size={20} />
+                                            {statusText}
+                                        </div>
+                                    );
+                                })()}
+                                {trip.phone && (
+                                    <Button
+                                        variant="secondary"
+                                        onClick={() => window.location.href = `tel:${trip.phone}`}
+                                        className="w-full mt-3 bg-white/5 hover:bg-white/10 text-white h-12 rounded-xl border border-white/5"
+                                    >
+                                        <Phone size={16} className="mr-2" /> Call Customer
+                                    </Button>
+                                )}
                             </div>
                         )}
                     </div>
@@ -636,8 +674,8 @@ const DriverDashboard = ({ onNavigate, user, onLogout, onUpdateUser }) => {
     const Profile = () => {
         const [isEditingPhone, setIsEditingPhone] = useState(false);
         const [isEditingProfile, setIsEditingProfile] = useState(false);
-        const [phone, setPhone] = useState(user?.phone || '+91 98765 43210');
-        const [newName, setNewName] = useState(user?.name || 'Vasigaran');
+        const [phone, setPhone] = useState(user?.phone || '');
+        const [newName, setNewName] = useState(user?.name || user?.fullName || '');
         const [newPhone, setNewPhone] = useState(phone);
         const [isUploading, setIsUploading] = useState(false);
 
@@ -654,11 +692,19 @@ const DriverDashboard = ({ onNavigate, user, onLogout, onUpdateUser }) => {
             const fetchDriverProfile = async () => {
                 if (user && user.role === 'driver') {
                     try {
-                        // Try to fetch existing profile
                         const profile = await driversAPI.getDriverProfile(user.id);
                         setDriverProfile(profile);
+
+                        // Update stats with real rating from profile
+                        if (profile.rating) {
+                            setStats(prev => ({ ...prev, rating: profile.rating }));
+                        }
+
+                        // Update bank details if they exist in profile (assuming they are stored there)
+                        if (profile.bankDetails) {
+                            setBankDetails(prev => ({ ...prev, ...profile.bankDetails }));
+                        }
                     } catch (error) {
-                        // If 404, maybe create one? or just ignore for now
                         console.log("Driver profile not found or error", error);
                     }
                 }

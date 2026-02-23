@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, ArrowLeft, ShieldCheck, MapPin, Check, ChevronsUpDown, User, Star, CreditCard, Wallet, Building, Tag } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, ArrowLeft, ShieldCheck, MapPin, Check, ChevronsUpDown, User, Star, CreditCard, Wallet, Building, Tag } from 'lucide-react';
+import { format, isWithinInterval, startOfDay } from 'date-fns';
+import { Calendar } from './ui/calendar';
+import { getBookedDates } from '../api/bookings';
 import VehicleMap from './VehicleMap';
 import { toast } from 'sonner';
 import { cn } from "./ui/utils";
@@ -33,6 +35,7 @@ const BookingForm = ({ vehicle, bookingData, onBack, onConfirm }) => {
         startTime: '',
         endDate: '',
         endTime: '',
+        pickupLocation: vehicle.location || 'Coimbatore',
         dropLocation: '',
         dropTime: '',
         name: '',
@@ -49,6 +52,8 @@ const BookingForm = ({ vehicle, bookingData, onBack, onConfirm }) => {
         driverCost: 0,
         total: 0
     });
+
+    const [bookedRanges, setBookedRanges] = useState([]);
 
     const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
 
@@ -97,6 +102,24 @@ const BookingForm = ({ vehicle, bookingData, onBack, onConfirm }) => {
     const isWeekend = (date) => {
         const day = date.getDay();
         return day === 0 || day === 5 || day === 6;
+    };
+
+    useEffect(() => {
+        getBookedDates(vehicle.id).then(dates => {
+            setBookedRanges(dates.map(range => ({
+                start: new Date(range.startDate),
+                end: new Date(range.endDate)
+            })));
+        }).catch(err => console.error("Error fetching booked dates:", err));
+    }, [vehicle.id]);
+
+    const isDateDisabled = (date) => {
+        const today = startOfDay(new Date());
+        if (date < today) return true;
+
+        return bookedRanges.some(range =>
+            isWithinInterval(date, { start: startOfDay(range.start), end: startOfDay(range.end) })
+        );
     };
 
     // Calculate costs whenever dates or addon props change
@@ -223,7 +246,7 @@ const BookingForm = ({ vehicle, bookingData, onBack, onConfirm }) => {
             currency: "INR",
             name: "Wheelio Rentals",
             description: `Booking for ${vehicle.name}`,
-            image: "https://wheelio.com/logo.png", // Replace with your logo URL if available
+            image: "/logo.png",
             handler: function (response) {
                 setIsPaymentProcessing(false);
                 toast.success(`Payment Successful! ID: ${response.razorpay_payment_id}`);
@@ -272,6 +295,10 @@ const BookingForm = ({ vehicle, bookingData, onBack, onConfirm }) => {
             toast.error('Please select pick-up and drop-off times.');
             return;
         }
+        if (!formData.pickupLocation) {
+            toast.error('Please select a pickup location.');
+            return;
+        }
         if (!formData.name || !formData.email || !formData.phone) {
             toast.error('Please fill in your personal details (name, email, phone).');
             return;
@@ -279,6 +306,11 @@ const BookingForm = ({ vehicle, bookingData, onBack, onConfirm }) => {
         if (costBreakdown.total <= 0) {
             toast.error('Total amount is ₹0. Please select valid dates.');
             return;
+        }
+
+        // Default dropLocation to pickupLocation if empty
+        if (!formData.dropLocation) {
+            setFormData(prev => ({ ...prev, dropLocation: prev.pickupLocation }));
         }
 
         handleRazorpayPayment();
@@ -321,39 +353,79 @@ const BookingForm = ({ vehicle, bookingData, onBack, onConfirm }) => {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-gray-300">Pick-up Date</label>
-                                        <div className="relative group">
-                                            <Calendar className="absolute left-4 top-3.5 text-gray-500 w-4 h-4 group-focus-within:text-primary transition-colors" />
-                                            <input
-                                                type="date"
-                                                name="startDate"
-                                                required
-                                                min={new Date().toISOString().split('T')[0]}
-                                                max="2026-12-31"
-                                                className="w-full bg-black/20 border border-white/10 rounded-xl py-3 pl-11 pr-4 text-white focus:ring-1 focus:ring-primary focus:border-primary/50 outline-none transition-all [color-scheme:dark]"
-                                                onChange={handleChange}
-                                            />
-                                        </div>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    className={cn(
+                                                        "w-full justify-start text-left font-normal bg-black/20 border-white/10 rounded-xl py-6 pl-11 pr-4 text-white hover:bg-white/5",
+                                                        !formData.startDate && "text-muted-foreground"
+                                                    )}
+                                                >
+                                                    <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
+                                                    {formData.startDate ? format(new Date(formData.startDate), "PPP") : <span>Pick a date</span>}
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0 bg-[#1e1e2d] border-white/10" align="start">
+                                                <Calendar
+                                                    mode="single"
+                                                    selected={formData.startDate ? new Date(formData.startDate) : undefined}
+                                                    onSelect={(date) => {
+                                                        if (date) {
+                                                            setFormData(prev => ({
+                                                                ...prev,
+                                                                startDate: date.toISOString().split('T')[0],
+                                                                // Reset end date if it's before new start date
+                                                                endDate: prev.endDate && new Date(prev.endDate) < date ? '' : prev.endDate
+                                                            }));
+                                                        }
+                                                    }}
+                                                    disabled={isDateDisabled}
+                                                    initialFocus
+                                                />
+                                            </PopoverContent>
+                                        </Popover>
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-gray-300">Return Date</label>
-                                        <div className="relative group">
-                                            <Calendar className="absolute left-4 top-3.5 text-gray-500 w-4 h-4 group-focus-within:text-primary transition-colors" />
-                                            <input
-                                                type="date"
-                                                name="endDate"
-                                                required
-                                                min={formData.startDate || new Date().toISOString().split('T')[0]}
-                                                max={(() => {
-                                                    if (!formData.startDate) return "2026-12-31";
-                                                    const start = new Date(formData.startDate);
-                                                    start.setDate(start.getDate() + 10);
-                                                    const maxDate = start.toISOString().split('T')[0];
-                                                    return maxDate < "2026-12-31" ? maxDate : "2026-12-31";
-                                                })()}
-                                                className="w-full bg-black/20 border border-white/10 rounded-xl py-3 pl-11 pr-4 text-white focus:ring-1 focus:ring-primary focus:border-primary/50 outline-none transition-all [color-scheme:dark]"
-                                                onChange={handleChange}
-                                            />
-                                        </div>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    className={cn(
+                                                        "w-full justify-start text-left font-normal bg-black/20 border-white/10 rounded-xl py-6 pl-11 pr-4 text-white hover:bg-white/5",
+                                                        !formData.endDate && "text-muted-foreground"
+                                                    )}
+                                                >
+                                                    <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
+                                                    {formData.endDate ? format(new Date(formData.endDate), "PPP") : <span>Pick a date</span>}
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0 bg-[#1e1e2d] border-white/10" align="start">
+                                                <Calendar
+                                                    mode="single"
+                                                    selected={formData.endDate ? new Date(formData.endDate) : undefined}
+                                                    onSelect={(date) => {
+                                                        if (date) {
+                                                            setFormData(prev => ({ ...prev, endDate: date.toISOString().split('T')[0] }));
+                                                        }
+                                                    }}
+                                                    disabled={(date) => {
+                                                        if (isDateDisabled(date)) return true;
+                                                        if (formData.startDate) {
+                                                            const start = new Date(formData.startDate);
+                                                            if (date < start) return true;
+                                                            // Limit to 10 days
+                                                            const max = new Date(start);
+                                                            max.setDate(max.getDate() + 10);
+                                                            if (date > max) return true;
+                                                        }
+                                                        return false;
+                                                    }}
+                                                    initialFocus
+                                                />
+                                            </PopoverContent>
+                                        </Popover>
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-gray-300">Pick-up Time</label>
@@ -394,19 +466,55 @@ const BookingForm = ({ vehicle, bookingData, onBack, onConfirm }) => {
 
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-gray-300">Pickup Location</label>
-                                    <div className="relative">
-                                        <MapPin className="absolute left-4 top-3.5 text-primary w-4 h-4" />
-                                        <input
-                                            type="text"
-                                            value={vehicle.location || 'Coimbatore'}
-                                            readOnly
-                                            className="w-full bg-primary/5 border border-primary/20 rounded-xl py-3 pl-11 pr-4 text-primary font-medium cursor-not-allowed focus:outline-none"
-                                        />
-                                    </div>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                className="w-full justify-start bg-black/20 border-white/10 rounded-xl px-4 text-white hover:bg-white/5 hover:text-white h-[50px] font-normal focus:ring-1 focus:ring-primary focus:border-primary/50"
+                                            >
+                                                <MapPin className="mr-3 h-4 w-4 shrink-0 text-primary" />
+                                                <span className="flex-1 text-left truncate">
+                                                    {formData.pickupLocation || "Select pickup location"}
+                                                </span>
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent side="bottom" className="w-[--radix-popover-trigger-width] p-0 bg-[#1e1e2d] border-white/10 text-white rounded-xl shadow-2xl shadow-black">
+                                            <Command className="bg-transparent">
+                                                <CommandInput placeholder="Search city..." className="text-white placeholder:text-gray-600" />
+                                                <CommandList>
+                                                    <CommandEmpty>No city found.</CommandEmpty>
+                                                    <CommandGroup>
+                                                        {INDIAN_CITIES.map((city) => (
+                                                            <CommandItem
+                                                                key={city}
+                                                                value={city}
+                                                                onSelect={(currentValue) => {
+                                                                    setFormData({ ...formData, pickupLocation: currentValue });
+                                                                }}
+                                                                className="text-white hover:bg-white/10 aria-selected:bg-white/10 cursor-pointer py-3"
+                                                            >
+                                                                <Check
+                                                                    className={cn(
+                                                                        "mr-2 h-4 w-4 text-primary",
+                                                                        formData.pickupLocation === city ? "opacity-100" : "opacity-0"
+                                                                    )}
+                                                                />
+                                                                {city}
+                                                            </CommandItem>
+                                                        ))}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
 
+                                <div className="space-y-4">
                                     {/* Enhanced Map Container */}
-                                    <div className="mt-4 rounded-xl overflow-hidden border border-white/10 shadow-lg relative h-[200px]">
-                                        <VehicleMap city={vehicle.location || 'Coimbatore'} vehicleName={vehicle.name} />
+                                    <div className="rounded-xl overflow-hidden border border-white/10 shadow-lg relative h-[200px]">
+                                        <VehicleMap city={formData.pickupLocation || 'Coimbatore'} vehicleName={vehicle.name} />
                                         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 pointer-events-none">
                                             <p className="text-xs text-white font-medium">Pick up vehicle at this centralized hub</p>
                                         </div>

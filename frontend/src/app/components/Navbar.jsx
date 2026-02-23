@@ -113,13 +113,6 @@ const Navbar = ({ onNavigate, currentView, user, onLogout }) => {
                                                             <LayoutDashboard size={18} />
                                                             My Dashboard
                                                         </button>
-                                                        <button
-                                                            onClick={() => handleNavClick('dashboard')}
-                                                            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 rounded-xl transition-colors text-left"
-                                                        >
-                                                            <CreditCard size={18} />
-                                                            Payments
-                                                        </button>
                                                     </>
                                                 )}
                                                 <div className="h-px bg-white/10 my-1"></div>

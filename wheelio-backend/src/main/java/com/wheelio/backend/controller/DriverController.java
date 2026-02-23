@@ -53,8 +53,14 @@ public class DriverController {
                 Optional<User> existing = userService.getUserByEmail(request.getEmail());
                 if (existing.isPresent()) {
                     User u = existing.get();
-                    u.setRole(User.Role.DRIVER);
-                    userService.updateUser(u);
+                    // CRITICAL: Only set role to DRIVER if they aren't already a regular USER or
+                    // ADMIN.
+                    // This prevents regular users from being flipped to DRIVER when they verify
+                    // their license.
+                    if (u.getRole() == null || u.getRole() == User.Role.DRIVER) {
+                        u.setRole(User.Role.DRIVER);
+                        userService.updateUser(u);
+                    }
                     return createDriverProfile(request, u.getId());
                 }
             }

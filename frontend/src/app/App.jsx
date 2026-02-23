@@ -17,6 +17,7 @@ import AdminDashboard from './components/AdminDashboard';
 import DriverDashboard from './components/DriverDashboard';
 import StaffDashboard from './components/StaffDashboard';
 import Antigravity from './components/Antigravity';
+import ResetPassword from './components/ResetPassword';
 import apiClient from '../api/config';
 
 import { Toaster, toast } from 'sonner';
@@ -24,6 +25,8 @@ import { vehicles as staticVehicles } from './data/vehicles';
 import * as authAPI from '../api/auth';
 import * as vehiclesAPI from '../api/vehicles';
 import * as bookingsAPI from '../api/bookings';
+import * as filesAPI from '../api/files';
+import * as driversAPI from '../api/drivers';
 import { getUser, clearAuth } from '../api/config';
 
 const App = () => {
@@ -93,6 +96,11 @@ const App = () => {
     } else {
       setIsAuthLoading(false);
     }
+
+    // Check for password reset route: /reset-password?token=...
+    if (window.location.pathname === '/reset-password') {
+      setCurrentView('reset-password');
+    }
   }, []);
 
   // Fetch user bookings from backend when user is set
@@ -147,6 +155,45 @@ const App = () => {
     fetchBookings();
   }, [user]);
 
+  // Mappings for backend visibility/compatibility
+  const mapVehicleToFrontend = (backendV) => {
+    const staticV = staticVehicles.find(sv => sv.name === backendV.name);
+
+    // Base mapped object for any backend vehicle
+    const baseMapped = {
+      ...backendV,
+      price: backendV.pricePerDay || 0,
+      image: backendV.imageUrl || '',
+      images: (backendV.images && backendV.images.length > 0)
+        ? backendV.images
+        : (backendV.imageUrl ? [backendV.imageUrl, '', '', ''] : ['', '', '', '']),
+      status: (backendV.status || 'available').toLowerCase(),
+      type: (() => {
+        if (!backendV.type) return 'Car';
+        const t = backendV.type.toUpperCase();
+        if (t === 'SUV' || t === 'MPV') return t;
+        return t.charAt(0) + t.slice(1).toLowerCase();
+      })()
+    };
+
+    if (staticV) {
+      return {
+        ...staticV,
+        ...baseMapped,
+        seats: (backendV.seats !== null && backendV.seats !== undefined && backendV.seats !== "") ? backendV.seats : staticV.seats,
+        fuelType: (backendV.fuelType && backendV.fuelType !== "") ? backendV.fuelType : (staticV.fuelType || staticV.fuel),
+        transmission: (backendV.transmission && backendV.transmission !== "") ? backendV.transmission : staticV.transmission,
+        rating: (backendV.rating !== null && backendV.rating !== undefined) ? backendV.rating : staticV.rating,
+        reviews: (backendV.reviews !== null && backendV.reviews !== undefined) ? backendV.reviews : staticV.reviews,
+        features: (backendV.features && backendV.features.length > 0) ? backendV.features : staticV.features,
+        details: backendV.details || staticV.details,
+        image: backendV.imageUrl || staticV.image,
+        images: (backendV.images && backendV.images.length > 0) ? backendV.images : staticV.images,
+      };
+    }
+    return baseMapped;
+  };
+
   // Fetch vehicles from backend on mount
   useEffect(() => {
     const fetchVehicles = async () => {
@@ -165,20 +212,7 @@ const App = () => {
 
         // Merge backend data with static frontend data
         // This preserves images and frontend-specific fields while getting real-time data from backend
-        const mergedVehicles = uniqueBackendVehicles.map(backendV => {
-          const staticV = staticVehicles.find(sv => sv.name === backendV.name);
-          if (staticV) {
-            return {
-              ...staticV,  // Frontend data (images, features, etc.)
-              id: backendV.id, // Use backend ID
-              status: backendV.status, // Use backend status
-              location: backendV.location, // Use backend location
-              // Keep frontend image/price/details but backend availability
-            };
-          }
-          // If no match, use backend data as-is
-          return backendV;
-        });
+        const mergedVehicles = uniqueBackendVehicles.map(mapVehicleToFrontend);
 
         setAllVehicles(mergedVehicles);
       } catch (error) {
@@ -221,35 +255,88 @@ const App = () => {
     fetchAllBookings();
   }, [user]);
 
-  const handleAddVehicle = async (newVehicle) => {
+  const handleAddVehicle = async (vehicleData) => {
     try {
-      const created = await vehiclesAPI.createVehicle(newVehicle);
-      setAllVehicles(prev => [created, ...prev]);
+      // Build a clean payload for the backend to avoid "Unknown Property" errors
+      const backendPayload = {
+        name: vehicleData.name,
+        brand: vehicleData.brand,
+        type: (vehicleData.type || 'Car').toUpperCase(),
+        pricePerDay: parseFloat(vehicleData.price) || 0,
+        location: vehicleData.location,
+        status: (vehicleData.status || 'AVAILABLE').toUpperCase(),
+        imageUrl: vehicleData.images?.[0] || vehicleData.image || '',
+        features: typeof vehicleData.features === 'string'
+          ? vehicleData.features.split(',').map(f => f.trim()).filter(f => f !== '')
+          : (Array.isArray(vehicleData.features) ? vehicleData.features : []),
+        description: vehicleData.description || '',
+        seats: parseInt(vehicleData.seats) || 5,
+        fuelType: vehicleData.fuelType || 'Petrol',
+        transmission: vehicleData.transmission || 'Manual',
+        rating: parseFloat(vehicleData.rating) || 4.5,
+        reviews: parseInt(vehicleData.reviews) || 0,
+        details: vehicleData.details || {}
+      };
+
+      console.log('Sending Add Vehicle Payload:', backendPayload);
+
+      const created = await vehiclesAPI.createVehicle(backendPayload);
+      const mapped = mapVehicleToFrontend(created);
+      setAllVehicles(prev => [mapped, ...prev]);
       toast.success('Vehicle added successfully!');
-      return created;
+      return mapped;
     } catch (error) {
       console.error('Error adding vehicle:', error);
-      toast.error('Failed to add vehicle');
+      const errorMsg = error.response?.data?.error || error.response?.data || error.message;
+      toast.error('Failed to add vehicle: ' + errorMsg);
       throw error;
     }
   };
 
-  const handleDeleteVehicle = (vehicleId) => {
-    // Note: Backend doesn't have delete endpoint yet, keeping local for now
-    const updatedVehicles = allVehicles.filter(v => v.id !== vehicleId);
-    setAllVehicles(updatedVehicles);
-    toast.success('Vehicle removed');
+  const handleDeleteVehicle = async (vehicleId) => {
+    try {
+      await vehiclesAPI.deleteVehicle(vehicleId);
+      setAllVehicles(prev => prev.filter(v => v.id !== vehicleId));
+      toast.success('Vehicle removed from fleet');
+    } catch (error) {
+      console.error('Error deleting vehicle:', error);
+      toast.error('Failed to delete vehicle');
+    }
   };
 
   const handleUpdateVehicle = async (updatedVehicle) => {
     try {
-      const updated = await vehiclesAPI.updateVehicle(updatedVehicle.id, updatedVehicle);
-      setAllVehicles(prev => prev.map(v => v.id === updated.id ? updated : v));
+      const backendPayload = {
+        id: updatedVehicle.id,
+        name: updatedVehicle.name,
+        brand: updatedVehicle.brand,
+        type: (updatedVehicle.type || 'Car').toUpperCase(),
+        pricePerDay: parseFloat(updatedVehicle.price) || updatedVehicle.pricePerDay || 0,
+        location: updatedVehicle.location,
+        status: (updatedVehicle.status || 'AVAILABLE').toUpperCase(),
+        imageUrl: updatedVehicle.images?.[0] || updatedVehicle.image || updatedVehicle.imageUrl || '',
+        features: typeof updatedVehicle.features === 'string'
+          ? updatedVehicle.features.split(',').map(f => f.trim()).filter(f => f !== '')
+          : (Array.isArray(updatedVehicle.features) ? updatedVehicle.features : []),
+        description: updatedVehicle.description || '',
+        seats: parseInt(updatedVehicle.seats) || 5,
+        fuelType: updatedVehicle.fuelType || 'Petrol',
+        transmission: updatedVehicle.transmission || 'Manual',
+        rating: parseFloat(updatedVehicle.rating) || 4.5,
+        reviews: parseInt(updatedVehicle.reviews) || 0,
+        details: updatedVehicle.details || {}
+      };
+
+      console.log('Sending Update Vehicle Payload:', backendPayload);
+      const updatedBackend = await vehiclesAPI.updateVehicle(updatedVehicle.id, backendPayload);
+      const mapped = mapVehicleToFrontend(updatedBackend);
+      setAllVehicles(prev => prev.map(v => v.id === mapped.id ? mapped : v));
       toast.success('Vehicle updated successfully!');
-      return updated;
+      return mapped;
     } catch (error) {
       console.error('Error updating vehicle:', error);
-      toast.error('Failed to update vehicle');
+      const errorMsg = error.response?.data?.error || error.response?.data || error.message;
+      toast.error('Failed to update vehicle: ' + errorMsg);
       throw error;
     }
   };
@@ -310,12 +397,13 @@ const App = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Accept both standard UUIDs and MongoDB ObjectIds (24-char hex)
+  // Relaxed ID check: Allow UUID, MongoDB ObjectId, or simple numeric IDs (for static data)
   const isValidId = (str) => {
-    if (!str) return false;
+    if (str === null || str === undefined) return false;
     const s = str.toString();
     return /^[0-9a-f]{24}$/i.test(s) || // MongoDB ObjectId
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s); // UUID
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s) || // UUID
+      /^\d+$/.test(s); // Numeric ID
   };
 
   const confirmBooking = async (bookingData) => {
@@ -345,21 +433,67 @@ const App = () => {
       const startDateStr = buildDate(bookingData.startDate, bookingData.startTime);
       const endDateStr = buildDate(bookingData.endDate, bookingData.dropTime);
 
+      const toastId = toast.loading('Confirming your booking...');
+
+      // Handle license upload if present (Verification System)
+      let driverProfileId = null;
+      if (bookingData.license) {
+        try {
+          // If license is a File object, upload it
+          if (bookingData.license instanceof File) {
+            toast.info('Uploading license document...');
+            const uploadRes = await filesAPI.uploadFile(bookingData.license);
+            const licenseUrl = uploadRes.url;
+
+            // Try to update or create DriverProfile for the user
+            try {
+              const profileUpdate = {
+                fullName: user.name,
+                email: user.email,
+                phone: user.phone || bookingData.phone,
+                city: user.city || 'Coimbatore',
+                licenseNumber: bookingData.licenseNumber || 'PENDING_VERIFICATION',
+                status: 'VERIFYING',
+                documents: {
+                  license: licenseUrl
+                }
+              };
+
+              // First check if profile exists
+              try {
+                const existingProfile = await driversAPI.getDriverProfile(user.id);
+                const updatedProfile = await driversAPI.updateDriverProfile(user.id, profileUpdate);
+                driverProfileId = updatedProfile.id;
+              } catch (e) {
+                // Not found, create new
+                const newProfile = await driversAPI.createDriverProfile(profileUpdate);
+                driverProfileId = newProfile.id;
+              }
+            } catch (profileErr) {
+              console.error("Failed to manage driver profile:", profileErr);
+            }
+          }
+        } catch (uploadErr) {
+          console.error("License upload failed:", uploadErr);
+          toast.error("Failed to upload license. Proceeding without verification.");
+        }
+      }
+
       // Send driverId if it's a valid format (UUID or MongoDB ObjectId)
-      let driverId = null;
-      if (bookingData.driver?.id && isValidId(bookingData.driver.id)) {
-        driverId = bookingData.driver.id;
+      let finalDriverId = driverProfileId || null;
+      if (!finalDriverId && bookingData.driver?.id && isValidId(bookingData.driver.id)) {
+        finalDriverId = bookingData.driver.id;
       }
 
       // Prepare booking data for backend
       const bookingPayload = {
         userId: user.id,
         vehicleId: bookingData.vehicle.id,
-        driverId: driverId,
+        driverId: finalDriverId,
         startDate: startDateStr,
         endDate: endDateStr,
         totalAmount: bookingData.totalAmount || parseFloat((bookingData.vehicle.price * 1.05 + 96).toFixed(2)),
-        pickupLocation: bookingData.vehicle?.location || 'Coimbatore', // Default pickup from vehicle location
+        pickupLocation: bookingData.pickupLocation || bookingData.vehicle?.location || 'Coimbatore',
         dropLocation: bookingData.dropLocation,
         contactPhone: bookingData.phone
       };
@@ -383,14 +517,14 @@ const App = () => {
       setUserBookings(prev => [newBooking, ...prev]);
       setAllBookings(prev => [newBooking, ...prev]);
 
-      toast.success('Booking confirmed successfully!');
+      toast.success('Booking confirmed successfully!', { id: toastId });
       setSelectedVehicle(null);
       setDashboardTab('bookings'); // Open bookings tab after successful booking
       handleNavigate('dashboard');
     } catch (error) {
       console.error('Error creating booking:', error);
-      const errorMsg = error.response?.data?.error || 'Failed to create booking. Please try again.';
-      toast.error(errorMsg);
+      const errorMsg = error.response?.data?.error || error.message || 'Failed to create booking. Please try again.';
+      toast.error(errorMsg, { id: typeof toastId !== 'undefined' ? toastId : undefined });
     }
   };
 
@@ -560,6 +694,7 @@ const App = () => {
           {currentView === 'admin-dashboard' && <AdminDashboard onNavigate={handleNavigate} vehicles={allVehicles} bookings={allBookings} onAddVehicle={handleAddVehicle} onDeleteVehicle={handleDeleteVehicle} onUpdateVehicle={handleUpdateVehicle} onLogout={handleLogout} />}
           {currentView === 'driver-dashboard' && <DriverDashboard onNavigate={handleNavigate} user={user} onUpdateUser={handleUpdateUser} onLogout={handleLogout} />}
           {currentView === 'staff-dashboard' && <StaffDashboard onNavigate={handleNavigate} user={user} onLogout={handleLogout} />}
+          {currentView === 'reset-password' && <ResetPassword onNavigate={handleNavigate} />}
 
 
         </main>

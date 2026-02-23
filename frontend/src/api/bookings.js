@@ -3,12 +3,7 @@ import apiClient from './config';
 // Create new booking
 export const createBooking = async (bookingData) => {
     const response = await apiClient.post('/bookings', {
-        userId: bookingData.userId,
-        vehicleId: bookingData.vehicleId,
-        driverId: bookingData.driverId,
-        startDate: bookingData.startDate,
-        endDate: bookingData.endDate,
-        totalAmount: bookingData.totalAmount,
+        ...bookingData
     });
     return response.data;
 };
@@ -55,5 +50,11 @@ export const updateBookingStatus = async (id, bookingStatus, paymentStatus) => {
 // Cancel booking
 export const cancelBooking = async (id) => {
     const response = await apiClient.delete(`/bookings/${id}`);
+    return response.data;
+};
+
+// Get booked dates for a vehicle
+export const getBookedDates = async (vehicleId) => {
+    const response = await apiClient.get(`/bookings/vehicle/${vehicleId}/booked-dates`);
     return response.data;
 };

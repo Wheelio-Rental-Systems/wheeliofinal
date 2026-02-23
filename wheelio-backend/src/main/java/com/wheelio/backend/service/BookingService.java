@@ -20,4 +20,6 @@ public interface BookingService {
     Booking updateBooking(Booking booking);
 
     void deleteBooking(String id);
+
+    boolean isVehicleAvailable(String vehicleId, java.time.LocalDateTime start, java.time.LocalDateTime end);
 }

@@ -4,7 +4,12 @@ import { LayoutDashboard, Calendar, ClipboardCheck, Tag, Plus, CheckCircle, XCir
 import CancelRideDialog from './CancelRideDialog';
 import DriverProfileDialog from './booking-steps/DriverProfileDialog';
 import LicenseViewDialog from './LicenseViewDialog';
+import VehicleFormDialog from './VehicleFormDialog';
+import DeleteConfirmationDialog from './DeleteConfirmationDialog';
 import { getAllDamageReports, updateDamageReportStatus } from '../../api/damageReports';
+import * as driversAPI from '../../api/drivers';
+import * as filesAPI from '../../api/files';
+import * as authAPI from '../../api/auth';
 import { drivers } from '../data/drivers';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
@@ -57,6 +62,8 @@ const AdminDashboard = ({ onNavigate, onAddVehicle, onDeleteVehicle, onUpdateVeh
     ];
     const COLORS = ['#2DD4BF', '#A78BFA', '#F472B6', '#FBBF24'];
 
+    const [isVehicleDialogOpen, setIsVehicleDialogOpen] = useState(false);
+
 
     const [editMode, setEditMode] = useState(false);
     const [editingId, setEditingId] = useState(null);
@@ -68,57 +75,46 @@ const AdminDashboard = ({ onNavigate, onAddVehicle, onDeleteVehicle, onUpdateVeh
         images: ['', '', '', '']
     });
 
-    const handleVehicleSubmit = (e) => {
-        e.preventDefault();
-        const vehicleData = {
-            ...newVehicle,
-            price: parseInt(newVehicle.price),
-            rating: parseFloat(newVehicle.rating),
-            features: typeof newVehicle.features === 'string' ? newVehicle.features.split(',').map(f => f.trim()) : newVehicle.features,
-            image: newVehicle.images[0] || '/images/swift.jpeg',
-            reviews: newVehicle.reviews || 0,
-            status: newVehicle.status || 'available',
-            seats: newVehicle.seats || 5,
-            fuelType: newVehicle.fuelType || 'Petrol',
-            transmission: newVehicle.transmission || 'Manual',
-        };
-
-        if (editMode) {
-            onUpdateVehicle({ ...vehicleData, id: editingId });
-            toast.success('Vehicle updated successfully!');
+    const handleVehicleSubmit = async (vehicleData) => {
+        try {
+            if (editMode) {
+                await onUpdateVehicle({ ...vehicleData, id: editingId });
+            } else {
+                await onAddVehicle({
+                    ...vehicleData,
+                    id: undefined
+                });
+            }
+            setIsVehicleDialogOpen(false);
             setEditMode(false);
             setEditingId(null);
-        } else {
-            onAddVehicle({
-                ...vehicleData,
-                id: Date.now(),
-            });
-            toast.success('Vehicle added to fleet successfully!');
-        }
 
-        setNewVehicle({
-            name: '', brand: '', type: 'Car', price: '', location: '', rating: '4.5',
-            details: { mileage: '', engine: '', power: '', topSpeed: '', fuelTank: '' },
-            features: '', description: '',
-            images: ['', '', '', '']
-        });
+            // Success messages are handled in App.jsx
+        } catch (error) {
+            // Error toasts are also handled in App.jsx
+            console.error("Form submission error:", error);
+        }
     };
 
     const handleEditClick = (vehicle) => {
         setNewVehicle({
             ...vehicle,
-            features: Array.isArray(vehicle.features) ? vehicle.features.join(', ') : vehicle.features,
-            images: vehicle.images && vehicle.images.length > 0 ? vehicle.images : [vehicle.image, '', '', ''],
+            // Ensure compatibility if backend fields are used directly
+            price: vehicle.price || vehicle.pricePerDay || '',
+            image: vehicle.image || vehicle.imageUrl || '',
+            features: Array.isArray(vehicle.features) ? vehicle.features.join(', ') : (vehicle.features || ''),
+            images: (vehicle.images && vehicle.images.length > 0) ? vehicle.images : [vehicle.image || vehicle.imageUrl || '', '', '', ''],
             details: vehicle.details || { mileage: '', engine: '', power: '', topSpeed: '', fuelTank: '' }
         });
         setEditMode(true);
         setEditingId(vehicle.id);
-        document.getElementById('add-vehicle-form')?.scrollIntoView({ behavior: 'smooth' });
+        setIsVehicleDialogOpen(true);
     };
 
     const handleCancelEdit = () => {
         setEditMode(false);
         setEditingId(null);
+        setIsVehicleDialogOpen(false);
         setNewVehicle({
             name: '', brand: '', type: 'Car', price: '', location: '', rating: '4.5',
             details: { mileage: '', engine: '', power: '', topSpeed: '', fuelTank: '' },
@@ -137,6 +133,23 @@ const AdminDashboard = ({ onNavigate, onAddVehicle, onDeleteVehicle, onUpdateVeh
 
     const [damageReports, setDamageReports] = useState([]);
     const [costInputs, setCostInputs] = useState({});
+
+    // Delete Confirmation State
+    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+    const [vehicleToDelete, setVehicleToDelete] = useState(null);
+
+    const handleDeleteClick = (vehicle) => {
+        setVehicleToDelete(vehicle);
+        setIsDeleteConfirmOpen(true);
+    };
+
+    const confirmDelete = () => {
+        if (vehicleToDelete) {
+            onDeleteVehicle(vehicleToDelete.id);
+            setIsDeleteConfirmOpen(false);
+            setVehicleToDelete(null);
+        }
+    };
 
     // Import API functions (assuming they are imported at top, adding here for context in replace)
     // Actually, I need to add the import statement at the top first. 
@@ -158,11 +171,6 @@ const AdminDashboard = ({ onNavigate, onAddVehicle, onDeleteVehicle, onUpdateVeh
         const storedRequests = JSON.parse(localStorage.getItem('hostRequests') || '[]');
         setHostRequests(storedRequests);
 
-        const storedDocs = JSON.parse(localStorage.getItem('userDocuments') || 'null');
-        if (storedDocs) {
-            setUserVerificationDocs(storedDocs);
-        }
-
         // Fetch reports on mount
         fetchDamageReports();
     }, []);
@@ -175,6 +183,62 @@ const AdminDashboard = ({ onNavigate, onAddVehicle, onDeleteVehicle, onUpdateVeh
     }, [activeTab]);
 
     const [userVerificationDocs, setUserVerificationDocs] = useState(null);
+    const [verifications, setVerifications] = useState([]);
+    const [isVerificationsLoading, setIsVerificationsLoading] = useState(false);
+
+    const fetchVerifications = async () => {
+        setIsVerificationsLoading(true);
+        try {
+            const allDriverProfiles = await driversAPI.getAllDrivers();
+            // Filter profiles with status VERIFYING
+            const pending = allDriverProfiles.filter(p => p.status === 'VERIFYING');
+            setVerifications(pending);
+        } catch (error) {
+            console.error('Failed to fetch verifications:', error);
+        } finally {
+            setIsVerificationsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (activeTab === 'verifications') {
+            fetchVerifications();
+        }
+    }, [activeTab]);
+
+    const handleApproveVerification = async (driverProfile) => {
+        try {
+            // driverProfile likely has userId and id. The API takes userId
+            await driversAPI.updateDriverProfile(driverProfile.userId, { status: 'ACTIVE' });
+            toast.success('Verification approved!');
+            setVerifications(prev => prev.filter(v => v.id !== driverProfile.id));
+            addNotification(driverProfile.userId, 'docs_approved', 'Your document verification has been approved. You can now use your account for bookings.');
+        } catch (error) {
+            console.error('Approval failed:', error);
+            toast.error('Failed to approve verification.');
+        }
+    };
+
+    const handleRejectVerification = async (driverProfile) => {
+        try {
+            await driversAPI.updateDriverProfile(driverProfile.userId, { status: 'REJECTED' });
+            toast.error('Verification rejected.');
+            setVerifications(prev => prev.filter(v => v.id !== driverProfile.id));
+            addNotification(driverProfile.userId, 'docs_rejected', 'Your document verification was rejected. Please re-upload your license in your profile.');
+        } catch (error) {
+            console.error('Rejection failed:', error);
+            toast.error('Failed to reject verification.');
+        }
+    };
+    const handleFixRole = async (email) => {
+        try {
+            await authAPI.updateUserRole(email, 'USER');
+            toast.success(`Role for ${email} reset to USER.`);
+        } catch (error) {
+            console.error('Failed to fix role:', error);
+            toast.error('Failed to reset role.');
+        }
+    };
 
     const addNotification = (userId, type, message) => {
         // ... (keep existing notification logic for now)
@@ -307,10 +371,24 @@ const AdminDashboard = ({ onNavigate, onAddVehicle, onDeleteVehicle, onUpdateVeh
 
 
     // Cancel a booking (update local state)
-    const handleConfirmCancel = (bookingId) => {
+    const handleConfirmCancel = (cancelData) => {
+        const { bookingId, reason } = cancelData;
+
         setBookings(prev => prev.map(b =>
             b.id === bookingId ? { ...b, status: 'Cancelled' } : b
         ));
+
+        // Find the booking to get the userId for notification
+        const booking = bookings.find(b => b.id === bookingId);
+        if (booking) {
+            const userId = booking.userId || 'guest';
+            addNotification(
+                userId,
+                'booking_cancelled',
+                `Your booking for ${booking.vehicleName} has been cancelled by the host. Reason: ${reason || 'N/A'}`
+            );
+            toast.info(`Cancellation notification sent to user.`);
+        }
     };
 
     // Approve/reject host vehicle listing requests
@@ -324,9 +402,9 @@ const AdminDashboard = ({ onNavigate, onAddVehicle, onDeleteVehicle, onUpdateVeh
     };
 
     const handleCancelClick = (bookingId) => {
-        if (window.confirm("Are you sure you want to cancel this booking? This action cannot be undone.")) {
-            handleConfirmCancel(bookingId);
-        }
+        const booking = bookings.find(b => b.id === bookingId);
+        setSelectedBooking(booking);
+        setIsCancelOpen(true);
     };
 
     const Sidebar = () => (
@@ -622,7 +700,7 @@ const AdminDashboard = ({ onNavigate, onAddVehicle, onDeleteVehicle, onUpdateVeh
                                                             <button
                                                                 onClick={() => handleCancelClick(booking.id)}
                                                                 className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-colors"
-                                                                title="Cancel Ride"
+                                                                title="Cancel Booking"
                                                             >
                                                                 <XCircle size={18} />
                                                             </button>
@@ -640,141 +718,31 @@ const AdminDashboard = ({ onNavigate, onAddVehicle, onDeleteVehicle, onUpdateVeh
                                     <div className="flex justify-between items-center mb-4">
                                         <h3 className="text-xl font-bold text-white">Vehicle Inventory</h3>
                                         <button
-                                            onClick={() => document.getElementById('add-vehicle-form').scrollIntoView({ behavior: 'smooth' })}
+                                            onClick={() => {
+                                                setEditMode(false);
+                                                setNewVehicle({
+                                                    name: '', brand: '', type: 'Car', price: '', location: '', rating: '4.5',
+                                                    details: { mileage: '', engine: '', power: '', topSpeed: '', fuelTank: '' },
+                                                    features: '', description: '',
+                                                    images: ['', '', '', '']
+                                                });
+                                                setIsVehicleDialogOpen(true);
+                                            }}
                                             className="bg-primary text-black px-4 py-2 rounded-lg font-bold text-sm hover:bg-cyan-400 transition-colors flex items-center gap-2"
                                         >
                                             <Plus size={16} /> Add New Vehicle
                                         </button>
                                     </div>
 
+                                    <VehicleFormDialog
+                                        open={isVehicleDialogOpen}
+                                        onOpenChange={setIsVehicleDialogOpen}
+                                        onSubmit={handleVehicleSubmit}
+                                        initialVehicle={editMode ? newVehicle : null}
+                                        editMode={editMode}
+                                    />
 
-                                    <div id="add-vehicle-form" className="bg-secondary/20 backdrop-blur-md border border-white/10 rounded-2xl p-6 mb-8 shadow-xl">
-                                        <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                                            <Plus size={20} className="text-primary" /> {editMode ? 'Edit Vehicle Details' : 'Add New Vehicle'}
-                                        </h4>
-                                        <form onSubmit={handleVehicleSubmit} className="space-y-4">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div className="space-y-1">
-                                                    <label className="text-xs text-gray-400 ml-1">Vehicle Name</label>
-                                                    <input
-                                                        type="text"
-                                                        placeholder="e.g. Maruti Swift"
-                                                        className="w-full bg-[#151520] border border-white/10 rounded-xl px-4 py-3 text-white focus:border-primary outline-none transition-colors"
-                                                        value={newVehicle.name}
-                                                        onChange={(e) => setNewVehicle({ ...newVehicle, name: e.target.value })}
-                                                        required
-                                                    />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <label className="text-xs text-gray-400 ml-1">Brand</label>
-                                                    <input
-                                                        type="text"
-                                                        placeholder="e.g. Maruti Suzuki"
-                                                        className="w-full bg-[#151520] border border-white/10 rounded-xl px-4 py-3 text-white focus:border-primary outline-none transition-colors"
-                                                        value={newVehicle.brand}
-                                                        onChange={(e) => setNewVehicle({ ...newVehicle, brand: e.target.value })}
-                                                        required
-                                                    />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <label className="text-xs text-gray-400 ml-1">Type</label>
-                                                    <select
-                                                        className="w-full bg-[#151520] border border-white/10 rounded-xl px-4 py-3 text-white focus:border-primary outline-none transition-colors appearance-none"
-                                                        value={newVehicle.type}
-                                                        onChange={(e) => setNewVehicle({ ...newVehicle, type: e.target.value })}
-                                                    >
-                                                        <option value="Car">Car</option>
-                                                        <option value="Bike">Bike</option>
-                                                        <option value="Scooter">Scooter</option>
-                                                        <option value="SUV">SUV</option>
-                                                    </select>
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <label className="text-xs text-gray-400 ml-1">Price Per Day (₹)</label>
-                                                    <input
-                                                        type="number"
-                                                        placeholder="e.g. 500"
-                                                        className="w-full bg-[#151520] border border-white/10 rounded-xl px-4 py-3 text-white focus:border-primary outline-none transition-colors"
-                                                        value={newVehicle.price}
-                                                        onChange={(e) => setNewVehicle({ ...newVehicle, price: e.target.value })}
-                                                        required
-                                                    />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <label className="text-xs text-gray-400 ml-1">Location</label>
-                                                    <input
-                                                        type="text"
-                                                        placeholder="e.g. Coimbatore"
-                                                        className="w-full bg-[#151520] border border-white/10 rounded-xl px-4 py-3 text-white focus:border-primary outline-none transition-colors"
-                                                        value={newVehicle.location}
-                                                        onChange={(e) => setNewVehicle({ ...newVehicle, location: e.target.value })}
-                                                        required
-                                                    />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <label className="text-xs text-gray-400 ml-1">Image URL</label>
-                                                    <input
-                                                        type="text"
-                                                        placeholder="/images/your-car.jpg"
-                                                        className="w-full bg-[#151520] border border-white/10 rounded-xl px-4 py-3 text-white focus:border-primary outline-none transition-colors"
-                                                        value={newVehicle.images[0]}
-                                                        onChange={(e) => {
-                                                            const newImages = [...newVehicle.images];
-                                                            newImages[0] = e.target.value;
-                                                            setNewVehicle({ ...newVehicle, images: newImages });
-                                                        }}
-                                                        required
-                                                    />
-                                                </div>
-                                            </div>
 
-                                            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                                                <input type="text" placeholder="Mileage" className="bg-[#151520] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-primary outline-none transition-colors"
-                                                    value={newVehicle.details.mileage} onChange={(e) => setNewVehicle({ ...newVehicle, details: { ...newVehicle.details, mileage: e.target.value } })} />
-                                                <input type="text" placeholder="Engine" className="bg-[#151520] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-primary outline-none transition-colors"
-                                                    value={newVehicle.details.engine} onChange={(e) => setNewVehicle({ ...newVehicle, details: { ...newVehicle.details, engine: e.target.value } })} />
-                                                <input type="text" placeholder="Power" className="bg-[#151520] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-primary outline-none transition-colors"
-                                                    value={newVehicle.details.power} onChange={(e) => setNewVehicle({ ...newVehicle, details: { ...newVehicle.details, power: e.target.value } })} />
-                                                <input type="text" placeholder="Top Speed" className="bg-[#151520] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-primary outline-none transition-colors"
-                                                    value={newVehicle.details.topSpeed} onChange={(e) => setNewVehicle({ ...newVehicle, details: { ...newVehicle.details, topSpeed: e.target.value } })} />
-                                                <input type="text" placeholder="Fuel Tank" className="bg-[#151520] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-primary outline-none transition-colors"
-                                                    value={newVehicle.details.fuelTank} onChange={(e) => setNewVehicle({ ...newVehicle, details: { ...newVehicle.details, fuelTank: e.target.value } })} />
-                                            </div>
-
-                                            <div className="space-y-1">
-                                                <label className="text-xs text-gray-400 ml-1">Features (comma separated)</label>
-                                                <textarea
-                                                    placeholder="e.g. AC, Bluetooth, Sunroof"
-                                                    className="w-full bg-[#151520] border border-white/10 rounded-xl px-4 py-3 text-white focus:border-primary outline-none transition-colors resize-none"
-                                                    rows="2"
-                                                    value={newVehicle.features}
-                                                    onChange={(e) => setNewVehicle({ ...newVehicle, features: e.target.value })}
-                                                ></textarea>
-                                            </div>
-
-                                            <div className="space-y-1">
-                                                <label className="text-xs text-gray-400 ml-1">Description</label>
-                                                <textarea
-                                                    placeholder="Brief description of the vehicle..."
-                                                    className="w-full bg-[#151520] border border-white/10 rounded-xl px-4 py-3 text-white focus:border-primary outline-none transition-colors resize-none"
-                                                    rows="2"
-                                                    value={newVehicle.description}
-                                                    onChange={(e) => setNewVehicle({ ...newVehicle, description: e.target.value })}
-                                                ></textarea>
-                                            </div>
-
-                                            <div className="flex gap-4">
-                                                <button type="submit" className="flex-1 bg-primary text-black font-bold py-4 rounded-xl hover:bg-cyan-400 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2">
-                                                    {editMode ? 'Update Vehicle' : 'Add Vehicle to Fleet'}
-                                                </button>
-                                                {editMode && (
-                                                    <button type="button" onClick={handleCancelEdit} className="px-6 py-4 bg-red-500/10 text-red-500 font-bold rounded-xl hover:bg-red-500/20 transition-all border border-red-500/20">
-                                                        Cancel
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </form>
-                                    </div>
 
                                     <div className="space-y-4">
                                         <h4 className="text-lg font-bold text-white mb-2">Current Fleet</h4>
@@ -808,7 +776,12 @@ const AdminDashboard = ({ onNavigate, onAddVehicle, onDeleteVehicle, onUpdateVeh
                                                         </div>
                                                         <div className="flex gap-2 w-full justify-end">
                                                             <button onClick={() => handleEditClick(vehicle)} className="flex-1 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-sm text-gray-300 transition-colors font-medium border border-white/5">Edit</button>
-                                                            <button onClick={() => { if (window.confirm('Are you sure you want to delete this vehicle?')) onDeleteVehicle(vehicle.id); }} className="flex-1 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl text-sm transition-colors font-medium border border-red-500/10">Delete</button>
+                                                            <button
+                                                                onClick={() => handleDeleteClick(vehicle)}
+                                                                className="flex-1 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl text-sm transition-colors font-medium border border-red-500/10"
+                                                            >
+                                                                Delete
+                                                            </button>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1028,6 +1001,106 @@ const AdminDashboard = ({ onNavigate, onAddVehicle, onDeleteVehicle, onUpdateVeh
                                 </div>
                             )}
 
+                            {activeTab === 'verifications' && (
+                                <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h3 className="text-xl font-bold text-white">Document Verifications</h3>
+                                        <button
+                                            onClick={fetchVerifications}
+                                            disabled={isVerificationsLoading}
+                                            className="px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors text-sm font-bold flex items-center gap-2"
+                                        >
+                                            {isVerificationsLoading ? '⏳ Loading...' : '🔄 Refresh'}
+                                        </button>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        {isVerificationsLoading ? (
+                                            <div className="text-gray-400 text-center py-10">Loading pending verifications...</div>
+                                        ) : verifications.length === 0 ? (
+                                            <div className="text-center py-16 bg-secondary/10 rounded-2xl border border-dashed border-white/10">
+                                                < ShieldCheck size={48} className="mx-auto text-gray-600 mb-4 opacity-20" />
+                                                <p className="text-gray-400 text-lg">No pending verifications</p>
+                                                <p className="text-gray-600 text-sm mt-1">New user documents will appear here for review.</p>
+                                            </div>
+                                        ) : (
+                                            verifications.map((profile) => (
+                                                <div key={profile.id} className="bg-card/50 border border-white/5 rounded-2xl p-6 hover:border-primary/20 transition-all">
+                                                    <div className="flex flex-col md:flex-row justify-between gap-6">
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center gap-4 mb-4">
+                                                                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xl">
+                                                                    {profile.fullName ? profile.fullName[0] : (profile.email ? profile.email[0].toUpperCase() : 'U')}
+                                                                </div>
+                                                                <div>
+                                                                    <h4 className="font-bold text-white text-lg">{profile.fullName || 'User Profile'}</h4>
+                                                                    <p className="text-xs text-gray-500">{profile.email} • {profile.phone || 'No phone'}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="grid grid-cols-2 gap-4">
+                                                                <div className="bg-white/5 p-3 rounded-xl">
+                                                                    <p className="text-[10px] text-gray-500 uppercase mb-1">License Number</p>
+                                                                    <p className="text-sm text-white font-mono">{profile.licenseNumber || 'Not provided'}</p>
+                                                                </div>
+                                                                <div className="bg-white/5 p-3 rounded-xl">
+                                                                    <p className="text-[10px] text-gray-500 uppercase mb-1">City</p>
+                                                                    <p className="text-sm text-white">{profile.city || 'Not set'}</p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="w-full md:w-64 space-y-3">
+                                                            <p className="text-xs text-gray-500 uppercase tracking-wide">Documents</p>
+                                                            {profile.documents && profile.documents.license ? (
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setViewingLicenseUrl(profile.documents.license);
+                                                                        setViewingDriverName(profile.fullName || 'User');
+                                                                        setIsLicenseViewerOpen(true);
+                                                                    }}
+                                                                    className="flex items-center justify-between w-full p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20 transition-all font-medium text-sm"
+                                                                >
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Camera size={16} />
+                                                                        <span>Driver's License</span>
+                                                                    </div>
+                                                                    <Plus size={16} className="rotate-45" />
+                                                                </button>
+                                                            ) : (
+                                                                <div className="p-3 rounded-xl bg-red-500/5 border border-red-500/10 text-red-400 text-xs italic">
+                                                                    No license file uploaded
+                                                                </div>
+                                                            )}
+
+                                                            <div className="grid grid-cols-2 gap-2 pt-2">
+                                                                <button
+                                                                    onClick={() => handleApproveVerification(profile)}
+                                                                    className="flex items-center justify-center gap-2 py-2.5 bg-green-500/20 text-green-400 hover:bg-green-500 hover:text-black rounded-xl text-xs font-bold transition-all border border-green-500/20"
+                                                                >
+                                                                    <CheckCircle size={14} /> Approve
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleRejectVerification(profile)}
+                                                                    className="flex items-center justify-center gap-2 py-2.5 bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white rounded-xl text-xs font-bold transition-all border border-red-500/20"
+                                                                >
+                                                                    <XCircle size={14} /> Reject
+                                                                </button>
+                                                            </div>
+                                                            <button
+                                                                onClick={() => handleFixRole(profile.email)}
+                                                                className="w-full mt-2 py-2 bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500 hover:text-black rounded-xl text-xs font-bold transition-all border border-yellow-500/20 flex items-center justify-center gap-2"
+                                                            >
+                                                                <User size={14} /> Reset to User Role
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
                         </div>
                     </div>
                 </div>
@@ -1036,7 +1109,7 @@ const AdminDashboard = ({ onNavigate, onAddVehicle, onDeleteVehicle, onUpdateVeh
                 isOpen={isCancelOpen}
                 onClose={() => setIsCancelOpen(false)}
                 onConfirm={handleConfirmCancel}
-                vehicleName={selectedBooking?.vehicleName}
+                bookingId={selectedBooking?.id}
             />
             <DriverProfileDialog
                 driver={selectedDriver}
@@ -1050,6 +1123,13 @@ const AdminDashboard = ({ onNavigate, onAddVehicle, onDeleteVehicle, onUpdateVeh
                 onClose={() => setIsLicenseViewerOpen(false)}
                 imageUrl={viewingLicenseUrl}
                 driverName={viewingDriverName}
+            />
+
+            <DeleteConfirmationDialog
+                open={isDeleteConfirmOpen}
+                onOpenChange={setIsDeleteConfirmOpen}
+                onConfirm={confirmDelete}
+                itemName={vehicleToDelete ? `${vehicleToDelete.brand} ${vehicleToDelete.name}` : 'this vehicle'}
             />
         </div>
     );

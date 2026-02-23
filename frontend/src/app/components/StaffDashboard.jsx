@@ -83,8 +83,8 @@ const StaffDashboard = ({ onNavigate, user, onLogout }) => {
                             key={item.id}
                             onClick={() => setActiveTab(item.id)}
                             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === item.id
-                                    ? 'bg-primary/20 text-primary border border-primary/20'
-                                    : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                                ? 'bg-primary/20 text-primary border border-primary/20'
+                                : 'text-gray-400 hover:bg-white/5 hover:text-white'
                                 }`}
                         >
                             <item.icon size={20} />
@@ -96,11 +96,11 @@ const StaffDashboard = ({ onNavigate, user, onLogout }) => {
                 <div className="absolute bottom-0 w-full p-4 border-t border-white/10">
                     <div className="flex items-center gap-3 mb-4 p-3 bg-white/5 rounded-xl">
                         <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-purple-500 flex items-center justify-center font-bold">
-                            {user?.name?.charAt(0) || 'S'}
+                            {user?.name?.charAt(0) || user?.fullName?.charAt(0) || 'S'}
                         </div>
                         <div className="overflow-hidden">
-                            <p className="font-bold truncate">{user?.name || 'Staff Member'}</p>
-                            <p className="text-xs text-gray-400 truncate">{user?.email || 'staff@wheelio.com'}</p>
+                            <p className="font-bold truncate">{user?.name || user?.fullName || 'Staff Member'}</p>
+                            <p className="text-xs text-gray-400 truncate">{user?.email || ''}</p>
                         </div>
                     </div>
                     <button
@@ -185,8 +185,8 @@ const StaffDashboard = ({ onNavigate, user, onLogout }) => {
                                                 <td className="p-4 text-gray-400">{booking.date}</td>
                                                 <td className="p-4">
                                                     <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${booking.status === 'Confirmed' ? 'bg-green-500/10 text-green-500' :
-                                                            booking.status === 'Pending' ? 'bg-yellow-500/10 text-yellow-500' :
-                                                                'bg-gray-500/10 text-gray-500'
+                                                        booking.status === 'Pending' ? 'bg-yellow-500/10 text-yellow-500' :
+                                                            'bg-gray-500/10 text-gray-500'
                                                         }`}>
                                                         {booking.status || 'Pending'}
                                                     </span>

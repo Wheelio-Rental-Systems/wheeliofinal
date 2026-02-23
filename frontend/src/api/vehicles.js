@@ -29,3 +29,9 @@ export const updateVehicle = async (id, vehicleData) => {
     const response = await apiClient.put(`/vehicles/${id}`, vehicleData);
     return response.data;
 };
+
+// Delete vehicle (admin only)
+export const deleteVehicle = async (id) => {
+    const response = await apiClient.delete(`/vehicles/${id}`);
+    return response.data;
+};

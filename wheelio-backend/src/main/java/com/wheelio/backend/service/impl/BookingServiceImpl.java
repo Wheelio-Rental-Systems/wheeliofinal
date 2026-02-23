@@ -54,4 +54,12 @@ public class BookingServiceImpl implements BookingService {
     public void deleteBooking(String id) {
         bookingRepository.deleteById(id);
     }
+
+    @Override
+    public boolean isVehicleAvailable(String vehicleId, java.time.LocalDateTime start, java.time.LocalDateTime end) {
+        List<Booking.BookingStatus> activeStatuses = List.of(Booking.BookingStatus.PENDING,
+                Booking.BookingStatus.CONFIRMED);
+        List<Booking> overlaps = bookingRepository.findOverlappingBookings(vehicleId, start, end, activeStatuses);
+        return overlaps.isEmpty();
+    }
 }
